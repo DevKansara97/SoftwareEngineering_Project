@@ -1,4 +1,5 @@
-# NGO–Donor–Third-Party Delivery Coordination Platform
+# सेवा-Connect 
+# An NGO Resource and Donation Management System
 
 A web-based platform designed to connect **NGOs**, **Donors**, and **third-party delivery service providers** (such as Uber, Rapido, Porter, etc.) to enable transparent, efficient, and real-world donation pickup and delivery.
 
