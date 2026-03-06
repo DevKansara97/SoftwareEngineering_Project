@@ -1,0 +1,187 @@
+{% extends "base.html" %}
+{% block title %}Register{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width:560px;padding-top:3rem;">
+  <div class="card">
+    <div class="text-center" style="margin-bottom:1.5rem;">
+      <div style="font-size:2.5rem;">🌱</div>
+      <h2 style="color:var(--red);margin-top:0.5rem;">Create Account</h2>
+      <p style="color:var(--text-muted);font-size:0.9rem;">Join the Seva Connect community</p>
+    </div>
+
+    <div id="alert-box"></div>
+
+    <!-- Role selector -->
+    <div class="form-group">
+      <label class="form-label">I am registering as</label>
+      <div style="display:flex;gap:1rem;">
+        <label style="flex:1;cursor:pointer;">
+          <input type="radio" name="role" value="NGO" id="role-ngo" style="margin-right:6px;" />
+          🏢 NGO
+        </label>
+        <label style="flex:1;cursor:pointer;">
+          <input type="radio" name="role" value="DONOR" id="role-donor" checked style="margin-right:6px;" />
+          ❤️ Donor
+        </label>
+      </div>
+    </div>
+
+    <!-- Common fields -->
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Full Name *</label>
+        <input type="text" id="name" class="form-control" placeholder="Your name" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Phone Number *</label>
+        <input type="tel" id="phone" class="form-control" placeholder="10 digit number" />
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Email Address *</label>
+        <input type="email" id="email" class="form-control" placeholder="you@example.com" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password *</label>
+        <input type="password" id="password" class="form-control" placeholder="Min 8 chars" />
+      </div>
+    </div>
+    <p style="font-size:0.78rem;color:var(--text-muted);margin-top:-0.5rem;margin-bottom:1rem;">
+      Password must have ≥ 8 characters with uppercase, lowercase, digit and special character.
+    </p>
+
+    <!-- NGO-specific fields -->
+    <div id="ngo-fields" class="hidden">
+      <hr style="margin-bottom:1rem;" />
+      <h4 style="color:var(--olive-dark);margin-bottom:1rem;">NGO Details</h4>
+      <div class="form-group">
+        <label class="form-label">Organisation Name *</label>
+        <input type="text" id="org-name" class="form-control" placeholder="Your NGO name" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Description</label>
+        <textarea id="description" class="form-control" rows="3" placeholder="Brief description of your NGO's mission…"></textarea>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">City</label>
+          <input type="text" id="city" class="form-control" placeholder="City" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">State</label>
+          <input type="text" id="state" class="form-control" placeholder="State" />
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Address</label>
+          <input type="text" id="address-ngo" class="form-control" placeholder="Street address" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Pincode (6 digits)</label>
+          <input type="text" id="pincode" class="form-control" placeholder="XXXXXX" />
+        </div>
+      </div>
+    </div>
+
+    <!-- Donor-specific fields -->
+    <div id="donor-fields">
+      <hr style="margin-bottom:1rem;" />
+      <h4 style="color:var(--olive-dark);margin-bottom:1rem;">Donor Details</h4>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Donor Type *</label>
+          <select id="donor-type" class="form-control">
+            <option value="Individual">Individual</option>
+            <option value="Academic Institution">Academic Institution</option>
+            <option value="Hospital">Hospital</option>
+            <option value="Hotel">Hotel</option>
+            <option value="Corporate">Corporate</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Organisation Name (optional)</label>
+          <input type="text" id="org-name-donor" class="form-control" placeholder="If applicable" />
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Address</label>
+        <input type="text" id="address-donor" class="form-control" placeholder="Your address" />
+      </div>
+    </div>
+
+    <button class="btn btn-primary w-full mt-2" onclick="doRegister()">Create Account</button>
+    <p class="text-center mt-2" style="font-size:0.9rem;">
+      Already have an account? <a href="/login" style="color:var(--red);font-weight:600;">Login here</a>
+    </p>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// toggle role-specific fields
+document.querySelectorAll('input[name="role"]').forEach(r => {
+  r.addEventListener('change', () => {
+    const isNGO = document.getElementById('role-ngo').checked;
+    document.getElementById('ngo-fields').classList.toggle('hidden', !isNGO);
+    document.getElementById('donor-fields').classList.toggle('hidden', isNGO);
+  });
+});
+
+// Prefill role from query / sessionStorage
+const prefill = new URLSearchParams(location.search).get('role') || sessionStorage.getItem('prefill_role');
+if (prefill === 'NGO') {
+  document.getElementById('role-ngo').checked = true;
+  document.getElementById('ngo-fields').classList.remove('hidden');
+  document.getElementById('donor-fields').classList.add('hidden');
+}
+
+async function doRegister() {
+  clearAlert('alert-box');
+  const role = document.querySelector('input[name="role"]:checked').value;
+  const body = {
+    name:     document.getElementById('name').value.trim(),
+    email:    document.getElementById('email').value.trim(),
+    password: document.getElementById('password').value,
+    phone:    document.getElementById('phone').value.trim(),
+    role
+  };
+
+  if (role === 'NGO') {
+    body.organization_name = document.getElementById('org-name').value.trim();
+    body.description       = document.getElementById('description').value.trim();
+    body.city              = document.getElementById('city').value.trim();
+    body.state             = document.getElementById('state').value.trim();
+    body.address           = document.getElementById('address-ngo').value.trim();
+    body.pincode           = document.getElementById('pincode').value.trim();
+  } else {
+    body.donor_type        = document.getElementById('donor-type').value;
+    body.organization_name = document.getElementById('org-name-donor').value.trim();
+    body.address           = document.getElementById('address-donor').value.trim();
+  }
+
+  if (!body.name || !body.email || !body.password || !body.phone) {
+    showAlert('alert-box', 'Please fill all required fields (*).', 'error');
+    return;
+  }
+
+  const btn = document.querySelector('.btn-primary');
+  btn.disabled = true; btn.textContent = 'Creating account…';
+
+  const data = await apiPost('/auth/register', body);
+
+  if (data.error) {
+    showAlert('alert-box', data.error, 'error');
+    btn.disabled = false; btn.textContent = 'Create Account';
+    return;
+  }
+
+  showAlert('alert-box', '✅ Account created! Redirecting to login…', 'success');
+  setTimeout(() => { window.location.href = '/login'; }, 1500);
+}
+</script>
+{% endblock %}

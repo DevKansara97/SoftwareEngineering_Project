@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}Notifications{% endblock %}
+
+{% block nav_links %}
+<li><a id="nav-user-name" href="#">…</a></li>
+<li><a href="#" class="btn-nav" onclick="logout()">Logout</a></li>
+{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width:700px;">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;flex-wrap:wrap;gap:1rem;">
+    <div>
+      <h1 class="section-title">Notifications</h1>
+      <p class="section-sub">Stay updated on your donations and requirements.</p>
+    </div>
+    <button class="btn btn-outline btn-sm" onclick="markAllRead()">Mark All Read</button>
+  </div>
+
+  <div class="card" style="padding:0;">
+    <div id="notif-list"><div class="spinner" style="margin:2rem auto;"></div></div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let user;
+
+document.addEventListener('DOMContentLoaded', async () => {
+  user = requireAuth();
+  if (!user) return;
+
+  await loadNotifications();
+});
+
+async function loadNotifications() {
+  const data = await apiGet('/notifications/', { user_id: user.user_id });
+  const list = document.getElementById('notif-list');
+
+  if (!data.length) {
+    list.innerHTML = '<div style="padding:3rem;text-align:center;color:var(--text-muted);">🔔 No notifications yet.</div>';
+    return;
+  }
+
+  list.innerHTML = data.map(n => `
+    <div class="notif-item ${n.is_read ? '' : 'unread'}"
+         onclick="markRead(${n.notification_id}, this)">
+      <div class="notif-dot" style="visibility:${n.is_read ? 'hidden' : 'visible'};"></div>
+      <div class="notif-msg">${n.message}</div>
+      <div class="notif-time">${fmtDate(n.created_at)}</div>
+    </div>
+  `).join('');
+}
+
+async function markRead(id, el) {
+  await apiPut('/notifications/mark-read', { notification_id: id });
+  el.classList.remove('unread');
+  el.querySelector('.notif-dot').style.visibility = 'hidden';
+}
+
+async function markAllRead() {
+  await apiPut('/notifications/mark-read', { user_id: user.user_id });
+  await loadNotifications();
+}
+</script>
+{% endblock %}

@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+{% block title %}Manage Requirements{% endblock %}
+
+{% block nav_links %}
+<li><a href="/ngo/dashboard">Dashboard</a></li>
+<li><a href="/ngo/requirements">Requirements</a></li>
+<li><a href="/notifications">🔔 <span id="notif-badge" class="notif-badge hidden"></span></a></li>
+<li><a id="nav-user-name" href="#">…</a></li>
+<li><a href="#" class="btn-nav" onclick="logout()">Logout</a></li>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;flex-wrap:wrap;gap:1rem;">
+    <div>
+      <h1 class="section-title">Requirements Management</h1>
+      <p class="section-sub">Post and manage your NGO's donation requirements.</p>
+    </div>
+    <button class="btn btn-primary" onclick="openModal('add-req-modal')">+ Add Requirement</button>
+  </div>
+
+  <div id="alert-main"></div>
+
+  <!-- Requirements table -->
+  <div class="card">
+    <div id="req-table-wrapper"><div class="spinner"></div></div>
+  </div>
+</div>
+
+<!-- Add Requirement Modal -->
+<div class="modal-overlay" id="add-req-modal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <span class="modal-title">Post New Requirement</span>
+      <button class="modal-close" onclick="closeModal('add-req-modal')">✕</button>
+    </div>
+    <div id="add-alert"></div>
+    <div class="form-group">
+      <label class="form-label">Title / Item Name *</label>
+      <input type="text" id="r-title" class="form-control" placeholder="e.g., Winter Blankets, Notebooks, Rice (10 kg bags)" />
+    </div>
+    <div class="form-group">
+      <label class="form-label">Description</label>
+      <textarea id="r-desc" class="form-control" rows="3" placeholder="Specific details – size, type, condition preferred, etc."></textarea>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Quantity Needed *</label>
+      <input type="number" id="r-qty" class="form-control" min="1" placeholder="e.g., 50" />
+    </div>
+    <button class="btn btn-primary w-full" onclick="addRequirement()">Post Requirement</button>
+  </div>
+</div>
+
+<!-- Edit Requirement Modal -->
+<div class="modal-overlay" id="edit-req-modal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <span class="modal-title">Edit Requirement</span>
+      <button class="modal-close" onclick="closeModal('edit-req-modal')">✕</button>
+    </div>
+    <div id="edit-req-alert"></div>
+    <input type="hidden" id="edit-req-id" />
+    <div class="form-group"><label class="form-label">Title *</label><input type="text" id="er-title" class="form-control" /></div>
+    <div class="form-group"><label class="form-label">Description</label><textarea id="er-desc" class="form-control" rows="3"></textarea></div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Quantity *</label>
+        <input type="number" id="er-qty" class="form-control" min="1" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Status</label>
+        <select id="er-status" class="form-control">
+          <option value="OPEN">Open</option>
+          <option value="PARTIALLY_FULFILLED">Partially Fulfilled</option>
+          <option value="FULFILLED">Fulfilled</option>
+        </select>
+      </div>
+    </div>
+    <button class="btn btn-primary w-full" onclick="saveEdit()">Save Changes</button>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let user;
+
+document.addEventListener('DOMContentLoaded', async () => {
+  user = requireAuth('NGO');
+  if (!user) return;
+  await loadRequirements();
+});
+
+async function loadRequirements() {
+  const reqs = await apiGet('/requirements/ngo', { ngo_id: user.user_id });
+  const wrap = document.getElementById('req-table-wrapper');
+
+  if (!reqs.length) {
+    wrap.innerHTML = '<p style="color:var(--text-muted);padding:1rem;">No requirements posted yet. Click "+ Add Requirement" to get started.</p>';
+    return;
+  }
+
+  wrap.innerHTML = `
+    <div class="table-wrapper">
+      <table>
+        <thead><tr><th>ID</th><th>Title</th><th>Description</th><th>Qty</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead>
+        <tbody id="req-tbody">
+          ${reqs.map(r => `
+            <tr>
+              <td>#${r.requirement_id}</td>
+              <td><strong>${r.title}</strong></td>
+              <td style="max-width:200px;font-size:0.82rem;">${r.description || '–'}</td>
+              <td>${r.quantity}</td>
+              <td><span class="badge ${badgeClass(r.status)}">${r.status.replace('_',' ')}</span></td>
+              <td>${fmtDate(r.created_at)}</td>
+              <td>
+                <button class="btn btn-outline btn-sm" onclick="editReq(${r.requirement_id},'${r.title}','${(r.description||'').replace(/'/g,"\\'")}',${r.quantity},'${r.status}')">Edit</button>
+                <button class="btn btn-danger btn-sm" onclick="deleteReq(${r.requirement_id})">Delete</button>
+              </td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+async function addRequirement() {
+  clearAlert('add-alert');
+  const title = document.getElementById('r-title').value.trim();
+  const desc  = document.getElementById('r-desc').value.trim();
+  const qty   = document.getElementById('r-qty').value;
+
+  if (!title || !qty) { showAlert('add-alert', 'Title and Quantity are required.', 'error'); return; }
+
+  const data = await apiPost('/requirements/add', { ngo_id: user.user_id, title, description: desc, quantity: parseInt(qty) });
+  if (data.error) { showAlert('add-alert', data.error, 'error'); return; }
+
+  showAlert('add-alert', '✅ Requirement posted!', 'success');
+  document.getElementById('r-title').value = '';
+  document.getElementById('r-desc').value  = '';
+  document.getElementById('r-qty').value   = '';
+  setTimeout(() => { closeModal('add-req-modal'); loadRequirements(); }, 900);
+}
+
+function editReq(id, title, desc, qty, status) {
+  document.getElementById('edit-req-id').value = id;
+  document.getElementById('er-title').value    = title;
+  document.getElementById('er-desc').value     = desc;
+  document.getElementById('er-qty').value      = qty;
+  document.getElementById('er-status').value   = status;
+  openModal('edit-req-modal');
+}
+
+async function saveEdit() {
+  clearAlert('edit-req-alert');
+  const id     = document.getElementById('edit-req-id').value;
+  const data = await apiPut('/requirements/update', {
+    requirement_id: parseInt(id),
+    title:          document.getElementById('er-title').value.trim(),
+    description:    document.getElementById('er-desc').value.trim(),
+    quantity:       parseInt(document.getElementById('er-qty').value),
+    status:         document.getElementById('er-status').value
+  });
+  if (data.error) { showAlert('edit-req-alert', data.error, 'error'); return; }
+  showAlert('edit-req-alert', '✅ Updated!', 'success');
+  setTimeout(() => { closeModal('edit-req-modal'); loadRequirements(); }, 900);
+}
+
+async function deleteReq(id) {
+  if (!confirm('Delete this requirement? This cannot be undone.')) return;
+  const data = await apiDelete('/requirements/delete', { requirement_id: id });
+  if (data.error) { showAlert('alert-main', data.error, 'error'); return; }
+  showAlert('alert-main', 'Requirement deleted.', 'success');
+  loadRequirements();
+}
+</script>
+{% endblock %}

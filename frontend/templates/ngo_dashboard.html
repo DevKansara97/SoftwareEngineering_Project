@@ -1,0 +1,166 @@
+{% extends "base.html" %}
+{% block title %}NGO Dashboard{% endblock %}
+
+{% block nav_links %}
+<li><a href="/ngo/dashboard">Dashboard</a></li>
+<li><a href="/ngo/requirements">My Requirements</a></li>
+<li>
+  <a href="/notifications">
+    🔔 <span id="notif-badge" class="notif-badge hidden"></span>
+  </a>
+</li>
+<li><a id="nav-user-name" href="#">…</a></li>
+<li><a href="#" class="btn-nav" onclick="logout()">Logout</a></li>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;flex-wrap:wrap;gap:1rem;">
+    <div>
+      <h1 class="section-title">NGO Dashboard</h1>
+      <p class="section-sub" id="welcome-msg">Welcome back!</p>
+    </div>
+    <a href="/ngo/requirements" class="btn btn-primary">+ Post Requirement</a>
+  </div>
+
+  <!-- Stat tiles -->
+  <div class="dash-tiles" id="tiles">
+    <div class="dash-tile"><div class="tile-num" id="t-open">–</div><div class="tile-lbl">Open Requirements</div></div>
+    <div class="dash-tile"><div class="tile-num" id="t-partial">–</div><div class="tile-lbl">Partially Fulfilled</div></div>
+    <div class="dash-tile"><div class="tile-num" id="t-done">–</div><div class="tile-lbl">Fulfilled</div></div>
+    <div class="dash-tile"><div class="tile-num" id="t-notif">–</div><div class="tile-lbl">Unread Notifications</div></div>
+  </div>
+
+  <!-- Profile card -->
+  <div class="card" id="profile-card">
+    <div class="card-title">Organisation Profile</div>
+    <div id="profile-info"><div class="spinner"></div></div>
+    <div class="mt-2">
+      <button class="btn btn-outline btn-sm" onclick="openModal('edit-profile-modal')">Edit Profile</button>
+    </div>
+  </div>
+
+  <!-- Recent requirements -->
+  <div class="card">
+    <div class="card-title">Recent Requirements</div>
+    <div id="req-list"><div class="spinner"></div></div>
+    <div class="mt-2">
+      <a href="/ngo/requirements" class="btn btn-secondary btn-sm">Manage All Requirements →</a>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Profile Modal -->
+<div class="modal-overlay" id="edit-profile-modal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <span class="modal-title">Edit NGO Profile</span>
+      <button class="modal-close" onclick="closeModal('edit-profile-modal')">✕</button>
+    </div>
+    <div id="edit-alert"></div>
+    <div class="form-group"><label class="form-label">Contact Name</label><input id="ep-name" class="form-control" /></div>
+    <div class="form-group"><label class="form-label">Phone</label><input id="ep-phone" class="form-control" /></div>
+    <div class="form-group"><label class="form-label">Organisation Name</label><input id="ep-org" class="form-control" /></div>
+    <div class="form-group"><label class="form-label">Description</label><textarea id="ep-desc" class="form-control" rows="3"></textarea></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">City</label><input id="ep-city" class="form-control" /></div>
+      <div class="form-group"><label class="form-label">State</label><input id="ep-state" class="form-control" /></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Address</label><input id="ep-addr" class="form-control" /></div>
+      <div class="form-group"><label class="form-label">Pincode</label><input id="ep-pin" class="form-control" /></div>
+    </div>
+    <button class="btn btn-primary w-full" onclick="saveProfile()">Save Changes</button>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let user;
+
+document.addEventListener('DOMContentLoaded', async () => {
+  user = requireAuth('NGO');
+  if (!user) return;
+
+  document.getElementById('welcome-msg').textContent = `Welcome, ${user.name}!`;
+
+  // Load profile
+  const profile = await apiGet('/ngo/profile', { ngo_id: user.user_id });
+  renderProfile(profile);
+
+  // Load requirements
+  const reqs = await apiGet('/requirements/ngo', { ngo_id: user.user_id });
+  renderReqs(reqs);
+
+  // Load notification count
+  const nc = await apiGet('/notifications/unread-count', { user_id: user.user_id });
+  document.getElementById('t-notif').textContent = nc.unread_count || 0;
+
+  // Count tiles
+  const open    = reqs.filter(r => r.status === 'OPEN').length;
+  const partial = reqs.filter(r => r.status === 'PARTIALLY_FULFILLED').length;
+  const done    = reqs.filter(r => r.status === 'FULFILLED').length;
+  document.getElementById('t-open').textContent    = open;
+  document.getElementById('t-partial').textContent = partial;
+  document.getElementById('t-done').textContent    = done;
+});
+
+function renderProfile(p) {
+  document.getElementById('profile-info').innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.6rem;font-size:0.9rem;">
+      <div><strong>Organisation:</strong> ${p.organization_name || '–'}</div>
+      <div><strong>Contact:</strong> ${p.name || '–'}</div>
+      <div><strong>Email:</strong> ${p.email || '–'}</div>
+      <div><strong>Phone:</strong> ${p.phone || '–'}</div>
+      <div><strong>City:</strong> ${p.city || '–'}</div>
+      <div><strong>State:</strong> ${p.state || '–'}</div>
+      <div style="grid-column:1/-1;"><strong>Description:</strong> ${p.description || '–'}</div>
+    </div>
+  `;
+  // Pre-fill edit form
+  document.getElementById('ep-name').value  = p.name || '';
+  document.getElementById('ep-phone').value = p.phone || '';
+  document.getElementById('ep-org').value   = p.organization_name || '';
+  document.getElementById('ep-desc').value  = p.description || '';
+  document.getElementById('ep-city').value  = p.city || '';
+  document.getElementById('ep-state').value = p.state || '';
+  document.getElementById('ep-addr').value  = p.address || '';
+  document.getElementById('ep-pin').value   = p.pincode || '';
+}
+
+function renderReqs(reqs) {
+  const el = document.getElementById('req-list');
+  const recent = reqs.slice(0, 5);
+  if (!recent.length) { el.innerHTML = '<p style="color:var(--text-muted);">No requirements posted yet.</p>'; return; }
+  el.innerHTML = `<div class="table-wrapper"><table>
+    <thead><tr><th>Title</th><th>Qty</th><th>Status</th><th>Date</th></tr></thead>
+    <tbody>${recent.map(r => `
+      <tr>
+        <td>${r.title}</td>
+        <td>${r.quantity}</td>
+        <td><span class="badge ${badgeClass(r.status)}">${r.status.replace('_',' ')}</span></td>
+        <td>${fmtDate(r.created_at)}</td>
+      </tr>
+    `).join('')}</tbody>
+  </table></div>`;
+}
+
+async function saveProfile() {
+  const data = await apiPut('/ngo/profile', {
+    ngo_id:            user.user_id,
+    name:              document.getElementById('ep-name').value,
+    phone:             document.getElementById('ep-phone').value,
+    organization_name: document.getElementById('ep-org').value,
+    description:       document.getElementById('ep-desc').value,
+    city:              document.getElementById('ep-city').value,
+    state:             document.getElementById('ep-state').value,
+    address:           document.getElementById('ep-addr').value,
+    pincode:           document.getElementById('ep-pin').value
+  });
+  if (data.error) { showAlert('edit-alert', data.error, 'error'); return; }
+  showAlert('edit-alert', 'Profile updated!', 'success');
+  setTimeout(() => { closeModal('edit-profile-modal'); location.reload(); }, 1000);
+}
+</script>
+{% endblock %}

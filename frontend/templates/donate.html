@@ -1,0 +1,190 @@
+{% extends "base.html" %}
+{% block title %}Make a Donation{% endblock %}
+
+{% block nav_links %}
+<li><a href="/donor/dashboard">Dashboard</a></li>
+<li><a href="/donor/search">Browse</a></li>
+<li><a id="nav-user-name" href="#">…</a></li>
+<li><a href="#" class="btn-nav" onclick="logout()">Logout</a></li>
+{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width:700px;">
+
+  <a href="/donor/search" style="color:var(--red);font-size:0.9rem;">← Back to Requirements</a>
+
+  <div id="req-detail" style="margin-top:1.5rem;">
+    <div class="spinner"></div>
+  </div>
+
+  <!-- Step 1: Confirm Donation -->
+  <div class="card hidden" id="step1">
+    <div class="card-title">Step 1 – Confirm Your Donation</div>
+    <div id="step1-alert"></div>
+    <p style="font-size:0.9rem;color:var(--text-muted);margin-bottom:1rem;">
+      You are about to fulfil the above requirement. Click <strong>Confirm Donation</strong> to proceed to delivery selection.
+    </p>
+    <button class="btn btn-primary" onclick="confirmDonation()">Confirm Donation ✓</button>
+  </div>
+
+  <!-- Step 2: Select Delivery Provider -->
+  <div class="card hidden" id="step2">
+    <div class="card-title">Step 2 – Select Delivery Provider</div>
+    <div id="step2-alert"></div>
+    <p style="font-size:0.9rem;color:var(--text-muted);margin-bottom:1rem;">
+      Enter the estimated distance to the NGO and choose a delivery partner. Costs are in INR.
+    </p>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Estimated Distance (km)</label>
+        <input type="number" id="distance" class="form-control" value="5" min="0.5" step="0.5" />
+      </div>
+      <div class="form-group" style="display:flex;align-items:flex-end;">
+        <button class="btn btn-secondary w-full" onclick="getEstimates()">Get Cost Estimates</button>
+      </div>
+    </div>
+
+    <div id="estimates-wrapper"></div>
+
+    <div class="form-group hidden" id="pickup-group">
+      <label class="form-label">Preferred Pickup Date & Time</label>
+      <input type="datetime-local" id="pickup-time" class="form-control" />
+    </div>
+
+    <button class="btn btn-primary hidden" id="book-btn" onclick="bookDelivery()">Book Delivery 🚚</button>
+  </div>
+
+  <!-- Step 3: Confirmation -->
+  <div class="card hidden" id="step3">
+    <div class="card-title">✅ Donation Confirmed!</div>
+    <p style="margin-bottom:1rem;">Your donation has been confirmed and the delivery has been booked.</p>
+    <div id="confirmation-details"></div>
+    <div class="flex gap-1 mt-2">
+      <a href="/donor/dashboard" class="btn btn-primary">Go to Dashboard</a>
+      <a href="/donor/search" class="btn btn-outline">Donate Again</a>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const requirementId = {{ requirement_id }};
+let user, donationId, selectedProvider, selectedCost;
+
+document.addEventListener('DOMContentLoaded', async () => {
+  user = requireAuth('DONOR');
+  if (!user) return;
+
+  // Load requirement details
+  const req = await apiGet(`/requirements/${requirementId}`);
+  if (req.error) { document.getElementById('req-detail').innerHTML = `<div class="alert alert-error">${req.error}</div>`; return; }
+
+  document.getElementById('req-detail').innerHTML = `
+    <div class="card" style="border-left:4px solid var(--red);">
+      <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;margin-bottom:0.75rem;">
+        <h2 style="color:var(--red);font-size:1.3rem;">${req.title}</h2>
+        <span class="badge ${badgeClass(req.status)}">${req.status.replace('_',' ')}</span>
+      </div>
+      <div style="font-size:0.9rem;color:var(--text-muted);margin-bottom:0.5rem;">
+        🏢 <strong>${req.ngo_name}</strong> &nbsp;·&nbsp; 📍 ${req.city || '–'}
+      </div>
+      <p style="font-size:0.9rem;margin-bottom:0.5rem;">${req.description || 'No description provided.'}</p>
+      <p style="font-size:0.85rem;">Quantity needed: <strong>${req.quantity}</strong></p>
+    </div>
+  `;
+
+  if (req.status === 'FULFILLED') {
+    document.getElementById('step1').classList.remove('hidden');
+    showAlert('step1-alert', 'This requirement has already been fulfilled.', 'warning');
+    document.querySelector('#step1 button').disabled = true;
+  } else {
+    document.getElementById('step1').classList.remove('hidden');
+  }
+});
+
+async function confirmDonation() {
+  clearAlert('step1-alert');
+  const btn = document.querySelector('#step1 button');
+  btn.disabled = true; btn.textContent = 'Processing…';
+
+  const data = await apiPost('/donations/create', { requirement_id: requirementId, donor_id: user.user_id });
+  if (data.error) { showAlert('step1-alert', data.error, 'error'); btn.disabled = false; btn.textContent = 'Confirm Donation ✓'; return; }
+
+  donationId = data.donation_id;
+  showAlert('step1-alert', `✅ Donation initiated! (ID #${donationId})`, 'success');
+  document.getElementById('step2').classList.remove('hidden');
+  document.getElementById('step2').scrollIntoView({ behavior: 'smooth' });
+}
+
+async function getEstimates() {
+  const dist = document.getElementById('distance').value || 5;
+  const wrap = document.getElementById('estimates-wrapper');
+  wrap.innerHTML = '<div class="spinner"></div>';
+
+  const data = await apiGet('/delivery/estimate', { distance_km: dist });
+  const estimates = data.estimates || [];
+
+  wrap.innerHTML = `
+    <div style="margin:1rem 0;">
+      <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:0.75rem;">Select a delivery partner:</p>
+      <div style="display:grid;gap:0.6rem;">
+        ${estimates.map(e => `
+          <label style="display:flex;align-items:center;gap:1rem;padding:0.85rem 1rem;border:1.5px solid var(--border);border-radius:8px;cursor:pointer;transition:border-color 0.2s;" class="provider-option">
+            <input type="radio" name="provider" value="${e.provider}" data-cost="${e.estimated_cost_inr}" onchange="selectProvider(this)" style="accent-color:var(--red);" />
+            <span style="flex:1;font-weight:600;">${e.provider}</span>
+            <span style="color:var(--olive-dark);font-weight:700;">₹${e.estimated_cost_inr}</span>
+          </label>
+        `).join('')}
+      </div>
+    </div>
+  `;
+
+  document.getElementById('pickup-group').classList.remove('hidden');
+}
+
+function selectProvider(radio) {
+  selectedProvider = radio.value;
+  selectedCost     = parseFloat(radio.dataset.cost);
+  document.querySelectorAll('.provider-option').forEach(l => l.style.borderColor = 'var(--border)');
+  radio.closest('label').style.borderColor = 'var(--red)';
+  document.getElementById('book-btn').classList.remove('hidden');
+}
+
+async function bookDelivery() {
+  if (!selectedProvider) { showAlert('step2-alert', 'Please select a delivery provider.', 'error'); return; }
+
+  const pickupRaw = document.getElementById('pickup-time').value;
+  const pickupFmt = pickupRaw ? pickupRaw.replace('T', ' ') + ':00' : null;
+
+  const btn = document.getElementById('book-btn');
+  btn.disabled = true; btn.textContent = 'Booking…';
+
+  const data = await apiPost('/delivery/create', {
+    donation_id:    donationId,
+    provider_name:  selectedProvider,
+    estimated_cost: selectedCost,
+    pickup_time:    pickupFmt
+  });
+
+  if (data.error) { showAlert('step2-alert', data.error, 'error'); btn.disabled = false; btn.textContent = 'Book Delivery 🚚'; return; }
+
+  // Show confirmation
+  document.getElementById('step3').classList.remove('hidden');
+  document.getElementById('confirmation-details').innerHTML = `
+    <div style="font-size:0.9rem;">
+      <p>📦 <strong>Delivery Partner:</strong> ${selectedProvider}</p>
+      <p>💰 <strong>Estimated Cost:</strong> ₹${selectedCost}</p>
+      <p>📍 <strong>Tracking Link:</strong> <a href="${data.tracking_link}" style="color:var(--red);">${data.tracking_link}</a></p>
+      ${pickupRaw ? `<p>⏰ <strong>Pickup Time:</strong> ${pickupRaw.replace('T',' ')}</p>` : ''}
+    </div>
+  `;
+  document.getElementById('step3').scrollIntoView({ behavior: 'smooth' });
+
+  // Update donation status to CONFIRMED
+  await apiPut('/donations/status', { donation_id: donationId, status: 'CONFIRMED' });
+}
+</script>
+{% endblock %}

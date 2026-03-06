@@ -1,0 +1,154 @@
+{% extends "base.html" %}
+{% block title %}Donor Dashboard{% endblock %}
+
+{% block nav_links %}
+<li><a href="/donor/dashboard">Dashboard</a></li>
+<li><a href="/donor/search">Browse Requirements</a></li>
+<li><a href="/notifications">🔔 <span id="notif-badge" class="notif-badge hidden"></span></a></li>
+<li><a id="nav-user-name" href="#">…</a></li>
+<li><a href="#" class="btn-nav" onclick="logout()">Logout</a></li>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;flex-wrap:wrap;gap:1rem;">
+    <div>
+      <h1 class="section-title">Donor Dashboard</h1>
+      <p class="section-sub" id="welcome-msg">Welcome back!</p>
+    </div>
+    <a href="/donor/search" class="btn btn-primary">🔍 Browse Requirements</a>
+  </div>
+
+  <!-- Tiles -->
+  <div class="dash-tiles">
+    <div class="dash-tile"><div class="tile-num" id="t-total">–</div><div class="tile-lbl">Total Donations</div></div>
+    <div class="dash-tile"><div class="tile-num" id="t-completed">–</div><div class="tile-lbl">Completed</div></div>
+    <div class="dash-tile"><div class="tile-num" id="t-pending">–</div><div class="tile-lbl">In Progress</div></div>
+    <div class="dash-tile"><div class="tile-num" id="t-notif">–</div><div class="tile-lbl">Unread Notifications</div></div>
+  </div>
+
+  <!-- Profile card -->
+  <div class="card">
+    <div class="card-title">My Profile</div>
+    <div id="profile-info"><div class="spinner"></div></div>
+    <div class="mt-2">
+      <button class="btn btn-outline btn-sm" onclick="openModal('edit-profile-modal')">Edit Profile</button>
+    </div>
+  </div>
+
+  <!-- Donation history -->
+  <div class="card">
+    <div class="card-title">My Donation History</div>
+    <div id="history-wrapper"><div class="spinner"></div></div>
+  </div>
+</div>
+
+<!-- Edit Profile Modal -->
+<div class="modal-overlay" id="edit-profile-modal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <span class="modal-title">Edit Profile</span>
+      <button class="modal-close" onclick="closeModal('edit-profile-modal')">✕</button>
+    </div>
+    <div id="edit-alert"></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Name</label><input id="ep-name" class="form-control" /></div>
+      <div class="form-group"><label class="form-label">Phone</label><input id="ep-phone" class="form-control" /></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Donor Type</label>
+        <select id="ep-type" class="form-control">
+          <option>Individual</option><option>Academic Institution</option>
+          <option>Hospital</option><option>Hotel</option><option>Corporate</option><option>Other</option>
+        </select>
+      </div>
+      <div class="form-group"><label class="form-label">Organisation Name</label><input id="ep-org" class="form-control" /></div>
+    </div>
+    <div class="form-group"><label class="form-label">Address</label><input id="ep-addr" class="form-control" /></div>
+    <button class="btn btn-primary w-full" onclick="saveProfile()">Save Changes</button>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let user;
+
+document.addEventListener('DOMContentLoaded', async () => {
+  user = requireAuth('DONOR');
+  if (!user) return;
+
+  document.getElementById('welcome-msg').textContent = `Welcome, ${user.name}!`;
+
+  const [profile, history, nc] = await Promise.all([
+    apiGet('/donor/profile', { donor_id: user.user_id }),
+    apiGet('/donor/donation-history', { donor_id: user.user_id }),
+    apiGet('/notifications/unread-count', { user_id: user.user_id })
+  ]);
+
+  renderProfile(profile);
+  renderHistory(history);
+
+  const done    = history.filter(h => h.status === 'COMPLETED').length;
+  const pending = history.filter(h => ['INITIATED','CONFIRMED','IN_PROGRESS'].includes(h.status)).length;
+  document.getElementById('t-total').textContent     = history.length;
+  document.getElementById('t-completed').textContent  = done;
+  document.getElementById('t-pending').textContent   = pending;
+  document.getElementById('t-notif').textContent     = nc.unread_count || 0;
+});
+
+function renderProfile(p) {
+  document.getElementById('profile-info').innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.6rem;font-size:0.9rem;">
+      <div><strong>Name:</strong> ${p.name}</div>
+      <div><strong>Email:</strong> ${p.email}</div>
+      <div><strong>Phone:</strong> ${p.phone || '–'}</div>
+      <div><strong>Type:</strong> ${p.donor_type}</div>
+      <div><strong>Organisation:</strong> ${p.organization_name || '–'}</div>
+      <div><strong>Address:</strong> ${p.address || '–'}</div>
+    </div>
+  `;
+  document.getElementById('ep-name').value  = p.name || '';
+  document.getElementById('ep-phone').value = p.phone || '';
+  document.getElementById('ep-type').value  = p.donor_type || 'Individual';
+  document.getElementById('ep-org').value   = p.organization_name || '';
+  document.getElementById('ep-addr').value  = p.address || '';
+}
+
+function renderHistory(history) {
+  const wrap = document.getElementById('history-wrapper');
+  if (!history.length) { wrap.innerHTML = '<p style="color:var(--text-muted);">No donations yet. <a href="/donor/search" style="color:var(--red);">Browse requirements →</a></p>'; return; }
+  wrap.innerHTML = `
+    <div class="table-wrapper">
+      <table>
+        <thead><tr><th>ID</th><th>Item</th><th>NGO</th><th>Status</th><th>Date</th><th>Action</th></tr></thead>
+        <tbody>${history.map(d => `
+          <tr>
+            <td>#${d.donation_id}</td>
+            <td>${d.title}</td>
+            <td>${d.ngo_name}</td>
+            <td><span class="badge ${badgeClass(d.status)}">${d.status.replace('_',' ')}</span></td>
+            <td>${fmtDate(d.created_at)}</td>
+            <td><a href="/tracking/${d.donation_id}" class="btn btn-outline btn-sm">Track</a></td>
+          </tr>
+        `).join('')}</tbody>
+      </table>
+    </div>`;
+}
+
+async function saveProfile() {
+  const data = await apiPut('/donor/profile', {
+    donor_id:          user.user_id,
+    name:              document.getElementById('ep-name').value,
+    phone:             document.getElementById('ep-phone').value,
+    donor_type:        document.getElementById('ep-type').value,
+    organization_name: document.getElementById('ep-org').value,
+    address:           document.getElementById('ep-addr').value
+  });
+  if (data.error) { showAlert('edit-alert', data.error, 'error'); return; }
+  showAlert('edit-alert', 'Profile updated!', 'success');
+  setTimeout(() => { closeModal('edit-profile-modal'); location.reload(); }, 1000);
+}
+</script>
+{% endblock %}

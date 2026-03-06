@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}Seva Connect{% endblock %} | NGO Donation Platform</title>
+  <link rel="stylesheet" href="/static/style.css" />
+  {% block head %}{% endblock %}
+</head>
+<body>
+
+<!-- ── Navbar ───────────────────────────────────────────────────────────── -->
+<nav class="navbar">
+  <a class="navbar-brand" href="/">
+    <span class="logo-text">सेवा</span>
+    <span>Connect</span>
+  </a>
+  <ul class="navbar-links" id="nav-links">
+    {% block nav_links %}
+    <li><a href="/">Home</a></li>
+    <li><a href="/login" class="btn-nav">Login</a></li>
+    <li><a href="/register" class="btn-nav">Register</a></li>
+    {% endblock %}
+  </ul>
+</nav>
+
+<!-- ── Main content ─────────────────────────────────────────────────────── -->
+<main>
+  {% block content %}{% endblock %}
+</main>
+
+<!-- ── Footer ───────────────────────────────────────────────────────────── -->
+<footer>
+  <p>Seva Connect &copy; 2024 &nbsp;|&nbsp; CSE 408 Software Engineering &nbsp;|&nbsp; Ahmedabad University &nbsp;|&nbsp; Group 4</p>
+</footer>
+
+<script src="/static/api.js"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

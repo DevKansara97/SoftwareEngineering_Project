@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}Login{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width:440px;padding-top:4rem;">
+  <div class="card">
+    <div class="text-center" style="margin-bottom:1.5rem;">
+      <div style="font-size:2.5rem;">🙏</div>
+      <h2 style="color:var(--red);margin-top:0.5rem;">Welcome Back</h2>
+      <p style="color:var(--text-muted);font-size:0.9rem;">Login to your Seva Connect account</p>
+    </div>
+
+    <div id="alert-box"></div>
+
+    <div id="login-form">
+      <div class="form-group">
+        <label class="form-label">Email Address</label>
+        <input type="email" id="email" class="form-control" placeholder="you@example.com" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <input type="password" id="password" class="form-control" placeholder="••••••••" />
+      </div>
+      <button class="btn btn-primary w-full" onclick="doLogin()">Login</button>
+    </div>
+
+    <p class="text-center mt-2" style="font-size:0.9rem;">
+      New to Seva Connect? <a href="/register" style="color:var(--red);font-weight:600;">Register here</a>
+    </p>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// If already logged in, redirect
+const _u = getUser();
+if (_u) window.location.href = _u.role === 'NGO' ? '/ngo/dashboard' : '/donor/dashboard';
+
+async function doLogin() {
+  clearAlert('alert-box');
+  const email    = document.getElementById('email').value.trim();
+  const password = document.getElementById('password').value;
+
+  if (!email || !password) {
+    showAlert('alert-box', 'Please enter email and password.', 'error');
+    return;
+  }
+
+  const btn = document.querySelector('#login-form button');
+  btn.disabled = true;
+  btn.textContent = 'Logging in…';
+
+  const data = await apiPost('/auth/login', { email, password });
+
+  if (data.error) {
+    showAlert('alert-box', data.error, 'error');
+    btn.disabled = false;
+    btn.textContent = 'Login';
+    return;
+  }
+
+  setUser(data);
+  showAlert('alert-box', 'Login successful! Redirecting…', 'success');
+  setTimeout(() => {
+    window.location.href = data.role === 'NGO' ? '/ngo/dashboard' : '/donor/dashboard';
+  }, 800);
+}
+
+// Allow Enter key
+document.addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+</script>
+{% endblock %}

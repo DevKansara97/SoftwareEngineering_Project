@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% block title %}Home{% endblock %}
+
+{% block content %}
+<!-- Hero -->
+<section class="hero">
+  <h1>🤝 सेवा Connect</h1>
+  <p class="sub">Bridging the gap between <strong>NGOs</strong> and <strong>Donors</strong> — making every contribution count.</p>
+  <div class="hero-btns">
+    <a href="/register" class="btn btn-lg" style="background:#F5C842;color:#7B1F1F;font-weight:800;">Get Started</a>
+    <a href="/donor/search" class="btn btn-lg btn-outline" style="border-color:#fff;color:#fff;">Browse Requirements</a>
+  </div>
+</section>
+
+<!-- Stats -->
+<div class="stats-bar" id="stats-bar">
+  <div class="stat-item"><div class="stat-num" id="s-ngos">–</div><div class="stat-lbl">NGOs Registered</div></div>
+  <div class="stat-item"><div class="stat-num" id="s-req">–</div><div class="stat-lbl">Open Requirements</div></div>
+  <div class="stat-item"><div class="stat-num" id="s-don">–</div><div class="stat-lbl">Donations Made</div></div>
+</div>
+
+<!-- Features -->
+<div class="container" style="padding-top:3rem;">
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1.5rem;">
+
+    <div class="card" style="border-top:4px solid var(--red);">
+      <div style="font-size:2rem;margin-bottom:0.75rem;">🏢</div>
+      <h3 style="color:var(--red);margin-bottom:0.5rem;">For NGOs</h3>
+      <p style="font-size:0.9rem;color:var(--text-muted);">Post your specific resource requirements — food, clothing, books and more. Get real-time notifications when donors fulfil them.</p>
+      <div class="mt-2"><a href="/register?role=NGO" class="btn btn-outline btn-sm">Register as NGO</a></div>
+    </div>
+
+    <div class="card" style="border-top:4px solid var(--olive);">
+      <div style="font-size:2rem;margin-bottom:0.75rem;">❤️</div>
+      <h3 style="color:var(--olive-dark);margin-bottom:0.5rem;">For Donors</h3>
+      <p style="font-size:0.9rem;color:var(--text-muted);">Browse real-time requirements from vetted NGOs near you. Donate items, arrange delivery and track everything in one place.</p>
+      <div class="mt-2"><a href="/register?role=DONOR" class="btn btn-secondary btn-sm">Register as Donor</a></div>
+    </div>
+
+    <div class="card" style="border-top:4px solid var(--blush);">
+      <div style="font-size:2rem;margin-bottom:0.75rem;">🚚</div>
+      <h3 style="color:var(--red);margin-bottom:0.5rem;">Live Tracking</h3>
+      <p style="font-size:0.9rem;color:var(--text-muted);">Choose from multiple delivery partners (Porter, Rapido, Uber Connect) with transparent cost estimates and live delivery tracking.</p>
+    </div>
+
+  </div>
+
+  <!-- Recent open requirements -->
+  <div class="mt-2" style="margin-top:3rem;">
+    <h2 class="section-title">Recent Requirements</h2>
+    <p class="section-sub">Latest needs posted by NGOs — your help can make a difference.</p>
+    <div class="req-grid" id="recent-req-grid">
+      <div class="loading-center"><div class="spinner"></div></div>
+    </div>
+    <div class="text-center mt-2">
+      <a href="/donor/search" class="btn btn-primary">View All Requirements →</a>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function loadStats() {
+  const [ngos, reqs] = await Promise.all([
+    apiGet('/ngo/all'),
+    apiGet('/requirements/all')
+  ]);
+  document.getElementById('s-ngos').textContent = ngos.length || 0;
+  document.getElementById('s-req').textContent  = reqs.length || 0;
+  document.getElementById('s-don').textContent  = '…'; // would need a summary endpoint
+}
+
+async function loadRecent() {
+  const data = await apiGet('/requirements/all');
+  const grid = document.getElementById('recent-req-grid');
+  const reqs = (Array.isArray(data) ? data : []).slice(0, 6);
+
+  if (!reqs.length) {
+    grid.innerHTML = '<p style="color:var(--text-muted);">No open requirements yet.</p>';
+    return;
+  }
+  grid.innerHTML = reqs.map(r => `
+    <div class="req-card">
+      <div class="req-card-header">
+        <span class="req-card-title">${r.title}</span>
+        <span class="badge ${badgeClass(r.status)}">${r.status.replace('_',' ')}</span>
+      </div>
+      <div class="req-card-ngo">📍 ${r.ngo_name} &nbsp;·&nbsp; ${r.city || '–'}</div>
+      <div class="req-card-desc">${r.description || 'No description provided.'}</div>
+      <div class="req-card-footer">
+        <span class="req-card-qty">Qty needed: ${r.quantity}</span>
+        <a href="/donor/donate/${r.requirement_id}" class="btn btn-primary btn-sm">Donate</a>
+      </div>
+    </div>
+  `).join('');
+}
+
+loadStats();
+loadRecent();
+
+// Pre-fill register role from query param
+const rp = new URLSearchParams(location.search).get('role');
+if (rp) sessionStorage.setItem('prefill_role', rp);
+</script>
+{% endblock %}

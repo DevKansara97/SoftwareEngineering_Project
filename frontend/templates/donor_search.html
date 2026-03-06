@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% block title %}Browse Requirements{% endblock %}
+
+{% block nav_links %}
+<li><a href="/donor/dashboard">Dashboard</a></li>
+<li><a href="/donor/search">Browse</a></li>
+<li><a href="/notifications">🔔 <span id="notif-badge" class="notif-badge hidden"></span></a></li>
+<li><a id="nav-user-name" href="#">…</a></li>
+<li><a href="#" class="btn-nav" onclick="logout()">Logout</a></li>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+  <h1 class="section-title">Browse NGO Requirements</h1>
+  <p class="section-sub">Search and filter requirements from verified NGOs. Select one to donate.</p>
+
+  <!-- Search / filter bar -->
+  <div class="card" style="padding:1.25rem 1.5rem;">
+    <div class="search-bar">
+      <input type="text" id="s-title" class="form-control" placeholder="🔍  Search by item name…" oninput="doSearch()" />
+      <input type="text" id="s-city"  class="form-control" placeholder="📍  Filter by city…" oninput="doSearch()" />
+      <select id="s-status" class="form-control" style="max-width:180px;" onchange="doSearch()">
+        <option value="">All Statuses</option>
+        <option value="OPEN">Open</option>
+        <option value="PARTIALLY_FULFILLED">Partially Fulfilled</option>
+      </select>
+      <select id="s-sort" class="form-control" style="max-width:160px;" onchange="doSearch()">
+        <option value="date">Newest First</option>
+        <option value="quantity">Highest Qty</option>
+        <option value="title">A → Z</option>
+      </select>
+    </div>
+    <div id="result-count" style="font-size:0.85rem;color:var(--text-muted);"></div>
+  </div>
+
+  <!-- Results -->
+  <div id="results-grid" class="req-grid">
+    <div class="loading-center"><div class="spinner"></div></div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let debounceTimer;
+
+document.addEventListener('DOMContentLoaded', () => {
+  // Auth optional for browsing, but redirect to login if not logged in for donating
+  doSearch();
+});
+
+async function doSearch() {
+  clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(async () => {
+    const grid = document.getElementById('results-grid');
+    grid.innerHTML = '<div class="loading-center"><div class="spinner"></div></div>';
+
+    const params = {
+      title:   document.getElementById('s-title').value.trim(),
+      city:    document.getElementById('s-city').value.trim(),
+      status:  document.getElementById('s-status').value,
+      sort_by: document.getElementById('s-sort').value
+    };
+
+    const data = await apiGet('/search/requirements', params);
+    const results = data.results || [];
+
+    document.getElementById('result-count').textContent =
+      data.count !== undefined ? `${data.count} result(s) found` : '';
+
+    if (!results.length) {
+      grid.innerHTML = `
+        <div style="grid-column:1/-1;text-align:center;padding:3rem;color:var(--text-muted);">
+          <div style="font-size:3rem;margin-bottom:1rem;">🔍</div>
+          <p>${data.message || 'No requirements found matching your search.'}</p>
+        </div>`;
+      return;
+    }
+
+    grid.innerHTML = results.map(r => `
+      <div class="req-card">
+        <div class="req-card-header">
+          <span class="req-card-title">${r.title}</span>
+          <span class="badge ${badgeClass(r.status)}">${r.status.replace('_',' ')}</span>
+        </div>
+        <div class="req-card-ngo">🏢 ${r.ngo_name} &nbsp;·&nbsp; 📍 ${r.city || '–'}</div>
+        <div class="req-card-desc">${r.description || 'No additional details provided.'}</div>
+        <div class="req-card-qty" style="margin-bottom:0.5rem;">Qty needed: <strong>${r.quantity}</strong></div>
+        <div class="req-card-footer">
+          <span style="font-size:0.78rem;color:var(--text-muted);">${fmtDate(r.created_at)}</span>
+          <a href="/donor/donate/${r.requirement_id}" class="btn btn-primary btn-sm">Donate ❤️</a>
+        </div>
+      </div>
+    `).join('');
+  }, 350);
+}
+</script>
+{% endblock %}
