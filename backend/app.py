@@ -28,6 +28,7 @@ from routes.donations import donations_bp
 from routes.delivery import delivery_bp
 from routes.notifications import notifications_bp
 from routes.search import search_bp
+from routes.tracking import tracking_bp
 from db import init_db
 
 app = Flask(__name__, template_folder=TEMPLATE_DIR, static_folder=STATIC_DIR)
@@ -43,6 +44,7 @@ app.register_blueprint(donations_bp,     url_prefix='/api/donations')
 app.register_blueprint(delivery_bp,      url_prefix='/api/delivery')
 app.register_blueprint(notifications_bp, url_prefix='/api/notifications')
 app.register_blueprint(search_bp,        url_prefix='/api/search')
+app.register_blueprint(tracking_bp,      url_prefix='/api/tracking')
 
 # ── Page routes ───────────────────────────────────────────────────────────────
 @app.route('/')
@@ -84,6 +86,11 @@ def tracking_page(order_id):
 @app.route('/notifications')
 def notifications_page():
     return render_template('notifications.html')
+
+@app.route('/driver/track/<int:order_id>')
+def driver_track(order_id):
+    """Driver opens this on their phone to share live GPS location."""
+    return render_template('driver_track.html', order_id=order_id)
 
 # ── Debug helper: print resolved paths on startup ────────────────────────────
 def _print_paths():
