@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Driver – Live Tracking | Seva Connect</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: #FAF6F0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+    }
+    .card {
+      background: #fff;
+      border-radius: 14px;
+      box-shadow: 0 4px 20px rgba(123,31,31,0.12);
+      padding: 2rem 1.75rem;
+      width: min(420px, 100%);
+      text-align: center;
+    }
+    h1  { color: #7B1F1F; font-size: 1.5rem; margin-bottom: 0.3rem; }
+    .sub { color: #6B5B5B; font-size: 0.9rem; margin-bottom: 2rem; }
+
+    /* Big status indicator */
+    .status-circle {
+      width: 110px; height: 110px;
+      border-radius: 50%;
+      margin: 0 auto 1.5rem;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      font-size: 2.2rem;
+      transition: background 0.4s;
+    }
+    .status-circle.idle      { background: #E9ECEF; }
+    .status-circle.active    { background: #D4EDDA; animation: pulse 2s infinite; }
+    .status-circle.error-bg  { background: #F8D7DA; }
+
+    @keyframes pulse {
+      0%,100% { box-shadow: 0 0 0 0   rgba(40,167,69,0.4); }
+      50%      { box-shadow: 0 0 0 16px rgba(40,167,69,0);   }
+    }
+
+    .status-label { font-size: 0.78rem; font-weight: 700; margin-top: 4px; letter-spacing: 0.5px; }
+
+    .info-box {
+      background: #FAF6F0;
+      border-radius: 10px;
+      padding: 1rem;
+      margin-bottom: 1.25rem;
+      font-size: 0.85rem;
+      color: #2C2C2C;
+      text-align: left;
+      line-height: 1.8;
+    }
+    .info-box strong { color: #7B1F1F; }
+
+    .coord-row { font-family: monospace; color: #3A4A2A; font-size: 0.88rem; }
+    .accuracy  { font-size: 0.78rem; color: #6B5B5B; }
+
+    .btn {
+      display: block; width: 100%;
+      padding: 14px;
+      border: none; border-radius: 10px;
+      font-size: 1rem; font-weight: 700;
+      cursor: pointer; transition: all 0.2s;
+      margin-bottom: 0.75rem;
+    }
+    .btn-start { background: #7B1F1F; color: #fff; }
+    .btn-start:hover { background: #9B2F2F; }
+    .btn-stop  { background: #6C757D; color: #fff; }
+    .btn-stop:hover  { background: #545B62; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .alert {
+      padding: 0.75rem 1rem; border-radius: 8px;
+      font-size: 0.85rem; font-weight: 500; margin-bottom: 1rem;
+    }
+    .alert-error   { background: #F8D7DA; color: #721C24; }
+    .alert-success { background: #D4EDDA; color: #155724; }
+    .alert-info    { background: #D1ECF1; color: #0C5460; }
+
+    .push-count {
+      font-size: 0.8rem; color: #6B5B5B; margin-top: 0.5rem;
+    }
+    .dot { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:5px; }
+    .dot.green { background:#28a745; }
+    .dot.grey  { background:#adb5bd; }
+  </style>
+</head>
+<body>
+
+<div class="card">
+  <h1>🚚 Driver Tracking</h1>
+  <p class="sub">Seva Connect – Live Location Sharing</p>
+
+  <!-- Status indicator -->
+  <div class="status-circle idle" id="status-circle">
+    <span id="status-icon">📍</span>
+    <span class="status-label" id="status-label">IDLE</span>
+  </div>
+
+  <!-- Alert -->
+  <div id="alert-box"></div>
+
+  <!-- Order info -->
+  <div class="info-box" id="order-info">
+    <div>Loading order details…</div>
+  </div>
+
+  <!-- Coordinates -->
+  <div class="info-box" id="coord-box" style="display:none;">
+    <div class="coord-row">📍 Lat: <span id="lat-val">–</span></div>
+    <div class="coord-row">📍 Lng: <span id="lng-val">–</span></div>
+    <div class="accuracy">Accuracy: <span id="acc-val">–</span> metres</div>
+  </div>
+
+  <!-- Buttons -->
+  <button class="btn btn-start" id="start-btn" onclick="startTracking()" disabled>
+    ▶ Start Sharing Location
+  </button>
+  <button class="btn btn-stop"  id="stop-btn"  onclick="stopTracking()"  disabled>
+    ⏹ Stop Sharing
+  </button>
+
+  <div class="push-count" id="push-count"></div>
+
+  <!-- Instructions -->
+  <div style="margin-top:1.5rem;font-size:0.78rem;color:#6B5B5B;text-align:left;line-height:1.7;">
+    <strong>How to use:</strong><br/>
+    1. Open this page on your phone browser.<br/>
+    2. Tap <em>Start Sharing Location</em> and allow location access.<br/>
+    3. Keep this tab open while delivering — your location updates automatically.<br/>
+    4. Tap <em>Stop Sharing</em> when delivered.
+  </div>
+</div>
+
+<script>
+// ── Read order_id from URL: /driver/track/ORDER_ID ─────────────────────────
+const pathParts = window.location.pathname.split('/');
+const orderId   = parseInt(pathParts[pathParts.length - 1]);
+
+const API = '/api';
+let watchId    = null;   // navigator.geolocation watchId
+let pushTimer  = null;   // setInterval for pushing to DB
+let pushCount  = 0;
+let lastPos    = null;   // {lat, lng}
+const PUSH_MS  = 5000;   // push every 5 seconds
+
+// ── On load: fetch order info ───────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', async () => {
+  if (!orderId || isNaN(orderId)) {
+    showAlert('Invalid order ID in URL. Use /driver/track/ORDER_ID', 'error');
+    return;
+  }
+
+  // Check geolocation support
+  if (!navigator.geolocation) {
+    showAlert('Your browser does not support GPS. Use Chrome or Firefox on Android/iOS.', 'error');
+    return;
+  }
+
+  // Load order info from server
+  try {
+    const res  = await fetch(`${API}/delivery/${orderId}`);
+    const data = await res.json();
+    if (data.error) {
+      document.getElementById('order-info').innerHTML =
+        `<span style="color:#721C24;">Order not found: ${data.error}</span>`;
+      return;
+    }
+    document.getElementById('order-info').innerHTML = `
+      <strong>Order #${data.order_id}</strong><br/>
+      Item: ${data.requirement || '–'}<br/>
+      Provider: ${data.provider_name}<br/>
+      Status: ${data.status.replace('_',' ')}
+    `;
+    document.getElementById('start-btn').disabled = false;
+    showAlert('Tap "Start Sharing Location" to begin.', 'info');
+  } catch(e) {
+    document.getElementById('order-info').innerHTML =
+      '<span style="color:#721C24;">Could not load order. Check your connection.</span>';
+  }
+});
+
+// ── Start GPS tracking ──────────────────────────────────────────────────────
+function startTracking() {
+  document.getElementById('start-btn').disabled = true;
+  document.getElementById('stop-btn').disabled  = false;
+
+  setStatus('active', '📡', 'LIVE');
+  showAlert('Requesting GPS permission…', 'info');
+
+  // Watch position (updates whenever device moves)
+  watchId = navigator.geolocation.watchPosition(
+    onPosition,
+    onGpsError,
+    {
+      enableHighAccuracy: true,   // use GPS chip, not just WiFi
+      maximumAge:         0,      // always fresh
+      timeout:            10000
+    }
+  );
+
+  // Also push on a timer (in case watchPosition doesn't fire often enough)
+  pushTimer = setInterval(() => {
+    if (lastPos) pushToDB(lastPos.lat, lastPos.lng);
+  }, PUSH_MS);
+
+  // Mark delivery as IN_PROGRESS
+  fetch(`${API}/delivery/status`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ order_id: orderId, status: 'DELIVERING' })
+  });
+}
+
+// ── Called every time device position changes ───────────────────────────────
+function onPosition(pos) {
+  const lat = pos.coords.latitude;
+  const lng = pos.coords.longitude;
+  const acc = Math.round(pos.coords.accuracy);
+
+  lastPos = { lat, lng };
+
+  document.getElementById('coord-box').style.display = 'block';
+  document.getElementById('lat-val').textContent = lat.toFixed(6);
+  document.getElementById('lng-val').textContent = lng.toFixed(6);
+  document.getElementById('acc-val').textContent = acc;
+
+  // Push immediately on first position, then let the timer handle the rest
+  pushToDB(lat, lng);
+  clearAlert();
+}
+
+// ── Push to Oracle DB via Flask API ────────────────────────────────────────
+async function pushToDB(lat, lng) {
+  try {
+    await fetch(`${API}/tracking/update`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ order_id: orderId, lat, lng })
+    });
+    pushCount++;
+    document.getElementById('push-count').innerHTML =
+      `<span class="dot green"></span>Location pushed ${pushCount} time${pushCount > 1 ? 's' : ''}`;
+  } catch(e) {
+    document.getElementById('push-count').innerHTML =
+      `<span class="dot grey"></span>Push failed – retrying…`;
+  }
+}
+
+// ── Stop tracking ───────────────────────────────────────────────────────────
+function stopTracking() {
+  if (watchId !== null) { navigator.geolocation.clearWatch(watchId); watchId = null; }
+  if (pushTimer)        { clearInterval(pushTimer); pushTimer = null; }
+
+  document.getElementById('start-btn').disabled = false;
+  document.getElementById('stop-btn').disabled  = true;
+  setStatus('idle', '📍', 'STOPPED');
+  showAlert('Location sharing stopped.', 'info');
+}
+
+// ── GPS error handler ───────────────────────────────────────────────────────
+function onGpsError(err) {
+  setStatus('error-bg', '⚠️', 'ERROR');
+  const msgs = {
+    1: 'Location access denied. Please allow location in browser settings.',
+    2: 'GPS signal not available. Move to an open area.',
+    3: 'GPS timed out. Trying again…'
+  };
+  showAlert(msgs[err.code] || 'GPS error: ' + err.message, 'error');
+  // Auto-retry on timeout
+  if (err.code === 3) setTimeout(startTracking, 3000);
+}
+
+// ── UI helpers ──────────────────────────────────────────────────────────────
+function setStatus(cls, icon, label) {
+  const el = document.getElementById('status-circle');
+  el.className = `status-circle ${cls}`;
+  document.getElementById('status-icon').textContent  = icon;
+  document.getElementById('status-label').textContent = label;
+}
+
+function showAlert(msg, type = 'info') {
+  document.getElementById('alert-box').innerHTML =
+    `<div class="alert alert-${type}">${msg}</div>`;
+}
+
+function clearAlert() {
+  document.getElementById('alert-box').innerHTML = '';
+}
+
+// ── Keep screen awake using Wake Lock API (if supported) ───────────────────
+async function requestWakeLock() {
+  if ('wakeLock' in navigator) {
+    try {
+      await navigator.wakeLock.request('screen');
+    } catch(e) { /* silently ignore if denied */ }
+  }
+}
+requestWakeLock();
+</script>
+</body>
+</html>

@@ -3,8 +3,8 @@ routes/auth.py  –  Registration & Login
 Passwords are hashed with werkzeug (bcrypt-compatible pbkdf2).
 """
 
-import hashlib, re
-from flask import Blueprint, request, jsonify, session
+import hashlib, re, os, requests, json
+from flask import Blueprint, request, jsonify, session, redirect, url_for
 from db import get_connection
 
 auth_bp = Blueprint('auth', __name__)
@@ -38,6 +38,130 @@ def validate_phone(phone: str) -> bool:
 
 def validate_pincode(pin: str) -> bool:
     return bool(re.match(r'^\d{6}$', pin))
+
+
+# ── Google OAuth Helpers ──────────────────────────────────────────────────────
+
+def get_google_oauth_url(state: str) -> str:
+    """Generate Google OAuth authorization URL."""
+    client_id = os.getenv('GOOGLE_CLIENT_ID', '')
+    if not client_id:
+        raise ValueError("GOOGLE_CLIENT_ID not configured in .env")
+    
+    redirect_uri = os.getenv('GOOGLE_REDIRECT_URI', 'http://localhost:5000/api/auth/google/callback')
+    
+    auth_url = (
+        f"https://accounts.google.com/o/oauth2/v2/auth?"
+        f"client_id={client_id}&"
+        f"redirect_uri={redirect_uri}&"
+        f"response_type=code&"
+        f"scope=openid%20email%20profile&"
+        f"state={state}&"
+        f"access_type=offline"
+    )
+    return auth_url
+
+
+def exchange_google_code_for_token(code: str) -> dict:
+    """Exchange authorization code for access token."""
+    client_id = os.getenv('GOOGLE_CLIENT_ID', '')
+    client_secret = os.getenv('GOOGLE_CLIENT_SECRET', '')
+    redirect_uri = os.getenv('GOOGLE_REDIRECT_URI', 'http://localhost:5000/api/auth/google/callback')
+    
+    token_url = "https://oauth2.googleapis.com/token"
+    data = {
+        'code': code,
+        'client_id': client_id,
+        'client_secret': client_secret,
+        'redirect_uri': redirect_uri,
+        'grant_type': 'authorization_code'
+    }
+    
+    response = requests.post(token_url, data=data)
+    if response.status_code != 200:
+        raise ValueError(f"Failed to exchange code: {response.text}")
+    
+    return response.json()
+
+
+def get_google_user_info(access_token: str) -> dict:
+    """Get user info from Google using access token."""
+    userinfo_url = "https://www.googleapis.com/oauth2/v2/userinfo"
+    headers = {'Authorization': f'Bearer {access_token}'}
+    
+    response = requests.get(userinfo_url, headers=headers)
+    if response.status_code != 200:
+        raise ValueError(f"Failed to get user info: {response.text}")
+    
+    return response.json()
+
+
+def get_or_create_user_from_google(google_user: dict) -> dict:
+    """
+    Find or create a user from Google OAuth info.
+    Returns user dict with user_id, name, email, role.
+    """
+    email = google_user.get('email', '').lower().strip()
+    name = google_user.get('name', 'Google User')
+    
+    if not email:
+        raise ValueError("Email not provided by Google")
+    
+    conn = get_connection()
+    cur = conn.cursor()
+    
+    try:
+        # Check if user exists
+        cur.execute("SELECT user_id, role FROM users WHERE email = :1", (email,))
+        row = cur.fetchone()
+        
+        if row:
+            # User exists
+            user_id, role = row
+            return {
+                'user_id': user_id,
+                'name': name,
+                'email': email,
+                'role': role
+            }
+        else:
+            # User doesn't exist - create new user as DONOR (default for OAuth)
+            # Use a placeholder password for OAuth users
+            pw_hash = hash_password('oauth_user_no_password')
+            
+            cur.execute("""
+                INSERT INTO users (name, email, password, role, phone)
+                VALUES (:1, :2, :3, :4, :5)
+            """, (name, email, pw_hash, 'DONOR', '9999999999'))
+            
+            conn.commit()
+            
+            # Get the new user_id
+            cur.execute("SELECT user_id FROM users WHERE email = :1", (email,))
+            row = cur.fetchone()
+            user_id = row[0]
+            
+            # Create donor profile
+            cur.execute("""
+                INSERT INTO donor_profiles (donor_id, donor_type, organization_name, address)
+                VALUES (:1, :2, :3, :4)
+            """, (user_id, 'Individual', name, ''))
+            
+            conn.commit()
+            
+            return {
+                'user_id': user_id,
+                'name': name,
+                'email': email,
+                'role': 'DONOR'
+            }
+    
+    except Exception as e:
+        conn.rollback()
+        raise e
+    finally:
+        cur.close()
+        conn.close()
 
 
 # ── POST /api/auth/register ───────────────────────────────────────────────────
@@ -201,3 +325,84 @@ def me():
     finally:
         cur.close()
         conn.close()
+
+
+# ── Google OAuth Flow ─────────────────────────────────────────────────────────
+
+@auth_bp.route('/google/init', methods=['POST'])
+def google_auth_init():
+    """Initiate Google OAuth flow. Returns authorization URL."""
+    try:
+        import secrets
+        
+        # Generate random state to prevent CSRF
+        state = secrets.token_urlsafe(32)
+        
+        # Store state in session (very short-lived)
+        session['google_oauth_state'] = state
+        session.permanent = True
+        
+        # Get OAuth URL
+        auth_url = get_google_oauth_url(state)
+        
+        return jsonify({
+            'auth_url': auth_url,
+            'message': 'Redirect user to this URL for Google login'
+        }), 200
+    
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 500
+    except Exception as e:
+        return jsonify({'error': f'OAuth initialization failed: {str(e)}'}), 500
+
+
+@auth_bp.route('/google/callback', methods=['GET'])
+def google_auth_callback():
+    """Callback endpoint after Google OAuth. Returns user data and token."""
+    try:
+        code = request.args.get('code')
+        state = request.args.get('state')
+        error = request.args.get('error')
+        
+        if error:
+            return jsonify({'error': f'Google OAuth error: {error}'}), 400
+        
+        if not code or not state:
+            return jsonify({'error': 'Missing code or state parameter'}), 400
+        
+        # Verify state parameter
+        stored_state = session.get('google_oauth_state')
+        if not stored_state or stored_state != state:
+            return jsonify({'error': 'Invalid state parameter - possible CSRF attack'}), 400
+        
+        # Exchange code for token
+        token_data = exchange_google_code_for_token(code)
+        access_token = token_data.get('access_token')
+        
+        if not access_token:
+            return jsonify({'error': 'Failed to obtain access token'}), 400
+        
+        # Get user info from Google
+        google_user = get_google_user_info(access_token)
+        
+        # Get or create user in database
+        user = get_or_create_user_from_google(google_user)
+        
+        # Set session
+        session['user_id'] = user['user_id']
+        session['role'] = user['role']
+        session['name'] = user['name']
+        
+        # Return user data (frontend will store this in localStorage)
+        return jsonify({
+            'message': 'Google login successful!',
+            'user_id': user['user_id'],
+            'name': user['name'],
+            'email': user['email'],
+            'role': user['role']
+        }), 200
+    
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 400
+    except Exception as e:
+        return jsonify({'error': f'Google callback failed: {str(e)}'}), 500

@@ -5,6 +5,10 @@ Framework: Python Flask + Oracle DB (oracledb)
 """
 
 import sys, os
+from dotenv import load_dotenv
+
+# ── Load environment variables from .env file ─────────────────────────────────
+load_dotenv()
 
 # ── Path setup ────────────────────────────────────────────────────────────────
 # BASE_DIR    = the backend/ folder  (e.g. E:\CSE408\SevaConnect\backend)
@@ -32,7 +36,7 @@ from routes.tracking import tracking_bp
 from db import init_db
 
 app = Flask(__name__, template_folder=TEMPLATE_DIR, static_folder=STATIC_DIR)
-app.secret_key = 'seva_connect_secret_key_2024'
+app.secret_key = os.getenv('SECRET_KEY', 'seva_connect_secret_key_2024')
 CORS(app)
 
 # Register Blueprints
@@ -87,10 +91,9 @@ def tracking_page(order_id):
 def notifications_page():
     return render_template('notifications.html')
 
-@app.route('/driver/track/<int:order_id>')
-def driver_track(order_id):
-    """Driver opens this on their phone to share live GPS location."""
-    return render_template('driver_track.html', order_id=order_id)
+@app.route('/auth/google/callback')
+def google_callback_page():
+    return render_template('google_callback.html')
 
 # ── Debug helper: print resolved paths on startup ────────────────────────────
 def _print_paths():

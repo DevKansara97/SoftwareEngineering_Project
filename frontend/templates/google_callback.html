@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}Google Login Processing{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width:440px;padding-top:4rem;text-align:center;">
+  <div class="card">
+    <h2 style="color:var(--red);">Processing Google Login...</h2>
+    <p style="color:var(--text-muted);margin-top:1rem;">
+      <div class="spinner" style="display:inline-block;margin-bottom:1rem;"></div>
+      <br/>
+      Please wait while we complete your login.
+    </p>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function processGoogleCallback() {
+  const params = new URLSearchParams(window.location.search);
+  const code = params.get('code');
+  const state = params.get('state');
+  const error = params.get('error');
+
+  if (error) {
+    showAlert('alert-box', `Google OAuth error: ${error}`, 'error');
+    setTimeout(() => window.location.href = '/login', 2000);
+    return;
+  }
+
+  if (!code) {
+    showAlert('alert-box', 'Missing authorization code from Google', 'error');
+    setTimeout(() => window.location.href = '/login', 2000);
+    return;
+  }
+
+  try {
+    // Call backend callback handler
+    const response = await fetch('/api/auth/google/callback?' + params.toString());
+    const data = await response.json();
+
+    if (data.error) {
+      alert(`Login failed: ${data.error}`);
+      window.location.href = '/login';
+      return;
+    }
+
+    // Success! Store user data
+    setUser(data);
+    
+    // Redirect to appropriate dashboard
+    const redirectUrl = data.role === 'NGO' ? '/ngo/dashboard' : '/donor/dashboard';
+    window.location.href = redirectUrl;
+  } catch (err) {
+    console.error('Callback processing error:', err);
+    alert('Failed to process Google login');
+    window.location.href = '/login';
+  }
+}
+
+// Process callback when page loads
+window.addEventListener('load', processGoogleCallback);
+</script>
+{% endblock %}
