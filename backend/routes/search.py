@@ -46,13 +46,16 @@ def search_requirements():
         where_clauses.append("LOWER(n.city) LIKE :city")
         params['city'] = f'%{city.lower()}%'
 
-    if min_qty:
-        where_clauses.append("r.quantity >= :min_qty")
-        params['min_qty'] = int(min_qty)
+    try:
+        if min_qty:
+            where_clauses.append("r.quantity >= :min_qty")
+            params['min_qty'] = int(min_qty)
 
-    if max_qty:
-        where_clauses.append("r.quantity <= :max_qty")
-        params['max_qty'] = int(max_qty)
+        if max_qty:
+            where_clauses.append("r.quantity <= :max_qty")
+            params['max_qty'] = int(max_qty)
+    except ValueError:
+        return jsonify({'error': 'Quantity filters must be valid integers.'}), 400
 
     order_map = {
         'date':     'r.created_at DESC',

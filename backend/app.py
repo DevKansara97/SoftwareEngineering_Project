@@ -22,7 +22,7 @@ sys.path.insert(0, BASE_DIR)
 TEMPLATE_DIR = os.path.join(PROJECT_DIR, 'frontend', 'templates')
 STATIC_DIR   = os.path.join(PROJECT_DIR, 'frontend', 'static')
 
-from flask import Flask, render_template, session
+from flask import Flask, render_template
 from flask_cors import CORS
 from routes.auth import auth_bp
 from routes.ngo import ngo_bp
@@ -85,7 +85,25 @@ def donate_page(requirement_id):
 
 @app.route('/tracking/<int:order_id>')
 def tracking_page(order_id):
-    return render_template('tracking.html', order_id=order_id)
+    return render_template(
+        'tracking.html',
+        order_id=order_id,
+        google_maps_api_key=os.getenv('GOOGLE_MAPS_API_KEY', '')
+    )
+
+@app.route('/driver')
+def driver_page():
+    return render_template('driver_home.html')
+
+
+@app.route('/driver/track/<int:order_id>')
+def driver_track_page(order_id):
+    return render_template(
+        'driver_track.html',
+        order_id=order_id,
+        google_maps_api_key=os.getenv('GOOGLE_MAPS_API_KEY', '')
+    )
+
 
 @app.route('/notifications')
 def notifications_page():
