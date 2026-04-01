@@ -1,0 +1,1 @@
+# Credentials removed - use environment variables instead

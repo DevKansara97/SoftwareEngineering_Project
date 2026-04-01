@@ -30,6 +30,15 @@
       <span style="color:var(--text-muted);font-size:0.85rem;">Or continue with</span>
     </div>
 
+    <!-- Google role picker -->
+    <div class="form-group" style="margin-bottom:0.75rem;">
+      <label class="form-label">Continue as</label>
+      <select id="google-role" class="form-control">
+        <option value="DONOR">Donor</option>
+        <option value="NGO">NGO</option>
+      </select>
+    </div>
+
     <!-- ── Google Sign-In Button ───────────────────────────────────────────── -->
     <button 
       class="btn w-full" 
@@ -88,6 +97,7 @@ async function doLogin() {
     return;
   }
 
+  clearDriver();
   setUser(data);
   showAlert('alert-box', 'Login successful! Redirecting…', 'success');
   setTimeout(() => {
@@ -102,9 +112,9 @@ async function doGoogleLogin() {
   btn.textContent = 'Redirecting to Google…';
 
   try {
+    const role = document.getElementById('google-role').value || 'DONOR';
     // Step 1: Get authorization URL from backend
-    const initResponse = await apiPost('/auth/google/init', {});
-    
+    const initResponse = await apiPost('/auth/google/init', { role });
     if (initResponse.error) {
       showAlert('alert-box', `Google OAuth error: ${initResponse.error}`, 'error');
       btn.disabled = false;

@@ -130,7 +130,7 @@ function renderHistory(history) {
             <td>${d.ngo_name}</td>
             <td><span class="badge ${badgeClass(d.status)}">${d.status.replace('_',' ')}</span></td>
             <td>${fmtDate(d.created_at)}</td>
-            <td><a href="/tracking/${d.donation_id}" class="btn btn-outline btn-sm">Track</a></td>
+            <td>${d.order_id ? `<a href="/tracking/${d.order_id}" class="btn btn-outline btn-sm">Track</a>` : 'Not assigned'}</td>
           </tr>
         `).join('')}</tbody>
       </table>

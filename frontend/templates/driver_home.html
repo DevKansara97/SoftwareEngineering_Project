@@ -1,0 +1,259 @@
+{% extends "base.html" %}
+{% block title %}Driver Portal{% endblock %}
+
+{% block nav_links %}
+<li><a href="/">Home</a></li>
+<li><a href="/driver">Driver Portal</a></li>
+<li><a id="nav-user-name" href="#">Driver</a></li>
+<li><a href="#" class="btn-nav" onclick="driverLogout()">Logout</a></li>
+{% endblock %}
+
+{% block content %}
+<section class="driver-shell">
+  <div class="container driver-grid">
+    <div class="driver-panel driver-hero-panel">
+      <span class="eyebrow">Third-Party Fleet Workspace</span>
+      <h1>Driver dashboard for live NGO deliveries</h1>
+      <p class="driver-subcopy">
+        Drivers log in with their registered phone number, see assigned deliveries, and update tracking from one clean workflow.
+      </p>
+      <div class="driver-value-list">
+        <div class="driver-value-card">
+          <strong>One-click jobs</strong>
+          <span>Assigned orders surface automatically on the dashboard.</span>
+        </div>
+        <div class="driver-value-card">
+          <strong>Protected status flow</strong>
+          <span>Only the assigned driver can move an order into transit or delivered.</span>
+        </div>
+        <div class="driver-value-card">
+          <strong>Live GPS updates</strong>
+          <span>Location sharing stays tied to the active order instead of a manual order-id entry.</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="driver-panel" id="driver-auth-shell">
+      <div id="driver-alert"></div>
+
+      <div id="driver-auth-view">
+        <div class="driver-auth-tabs">
+          <button class="driver-tab active" id="driver-login-tab" onclick="showDriverAuth('login')">Login</button>
+          <button class="driver-tab" id="driver-register-tab" onclick="showDriverAuth('register')">Register</button>
+        </div>
+
+        <div id="driver-login-view">
+          <h2 class="driver-panel-title">Sign in as a delivery partner</h2>
+          <p class="driver-panel-sub">Use the registered phone number shared with the delivery coordinator.</p>
+          <div class="form-group">
+            <label class="form-label">Phone Number</label>
+            <input id="driver-login-phone" class="form-control" type="tel" placeholder="10 digit number" />
+          </div>
+          <button class="btn btn-primary w-full" onclick="loginDriver()">Open Dashboard</button>
+        </div>
+
+        <div id="driver-register-view" class="hidden">
+          <h2 class="driver-panel-title">Register a driver profile</h2>
+          <p class="driver-panel-sub">Create a driver entry once, then use the same phone number for future deliveries.</p>
+          <div class="form-group">
+            <label class="form-label">Driver Name</label>
+            <input id="driver-name" class="form-control" type="text" placeholder="Full name" />
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Phone Number</label>
+              <input id="driver-phone" class="form-control" type="tel" placeholder="10 digit number" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Vehicle</label>
+              <input id="driver-vehicle" class="form-control" type="text" placeholder="Bike / Car / Van" />
+            </div>
+          </div>
+          <button class="btn btn-secondary w-full" onclick="registerDriver()">Create Driver Profile</button>
+        </div>
+      </div>
+
+      <div id="driver-dashboard-view" class="hidden">
+        <div class="driver-dashboard-head">
+          <div>
+            <span class="eyebrow">Driver Workspace</span>
+            <h2 class="driver-panel-title" id="driver-name-heading">Welcome</h2>
+            <p class="driver-panel-sub" id="driver-meta"></p>
+          </div>
+          <button class="btn btn-outline btn-sm" onclick="refreshDriverDashboard()">Refresh</button>
+        </div>
+
+        <div class="driver-stat-grid">
+          <div class="driver-stat-card">
+            <span class="driver-stat-num" id="driver-active-count">0</span>
+            <span class="driver-stat-label">Active deliveries</span>
+          </div>
+          <div class="driver-stat-card">
+            <span class="driver-stat-num" id="driver-done-count">0</span>
+            <span class="driver-stat-label">Completed today</span>
+          </div>
+        </div>
+
+        <div class="driver-orders-wrap">
+          <div class="driver-orders-head">
+            <h3>Assigned Orders</h3>
+            <span id="driver-orders-caption">Loading deliveries...</span>
+          </div>
+          <div id="driver-orders-list">
+            <div class="spinner"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let driverUser = null;
+
+document.addEventListener('DOMContentLoaded', async () => {
+  const savedDriver = getDriver();
+  const me = await apiGet('/delivery/driver/me');
+  if (me.error && !savedDriver) {
+    showDriverAuth('login');
+    return;
+  }
+
+  if (me.error) {
+    clearDriver();
+    showDriverAuth('login');
+    return;
+  }
+
+  driverUser = { ...(savedDriver || {}), ...me };
+  setDriver(driverUser);
+  await loadDriverDashboard();
+});
+
+function showDriverAuth(mode) {
+  document.getElementById('driver-login-view').classList.toggle('hidden', mode !== 'login');
+  document.getElementById('driver-register-view').classList.toggle('hidden', mode !== 'register');
+  document.getElementById('driver-login-tab').classList.toggle('active', mode === 'login');
+  document.getElementById('driver-register-tab').classList.toggle('active', mode === 'register');
+}
+
+async function registerDriver() {
+  clearAlert('driver-alert');
+  const body = {
+    name: document.getElementById('driver-name').value.trim(),
+    phone: document.getElementById('driver-phone').value.trim(),
+    vehicle: document.getElementById('driver-vehicle').value.trim()
+  };
+
+  if (!body.name || !body.phone) {
+    showAlert('driver-alert', 'Driver name and registered phone number are required.', 'error');
+    return;
+  }
+
+  const data = await apiPost('/delivery/drivers', body);
+  if (data.error) {
+    showAlert('driver-alert', data.error, 'error');
+    return;
+  }
+
+  document.getElementById('driver-login-phone').value = body.phone;
+  showAlert('driver-alert', 'Driver profile created. You can log in now with the same phone number.', 'success');
+  showDriverAuth('login');
+}
+
+async function loginDriver() {
+  clearAlert('driver-alert');
+  const phone = document.getElementById('driver-login-phone').value.trim();
+  if (!phone) {
+    showAlert('driver-alert', 'Enter the registered driver phone number.', 'error');
+    return;
+  }
+
+  const data = await apiPost('/delivery/driver-login', { phone });
+  if (data.error) {
+    showAlert('driver-alert', data.error, 'error');
+    return;
+  }
+
+  clearUser();
+  driverUser = data;
+  setDriver(data);
+  await loadDriverDashboard();
+}
+
+async function refreshDriverDashboard() {
+  await loadDriverDashboard();
+}
+
+async function loadDriverDashboard() {
+  const me = await apiGet('/delivery/driver/me');
+  if (me.error) {
+    clearDriver();
+    driverUser = null;
+    showDriverAuth('login');
+    document.getElementById('driver-dashboard-view').classList.add('hidden');
+    document.getElementById('driver-auth-view').classList.remove('hidden');
+    showAlert('driver-alert', 'Your driver session expired. Please log in again.', 'warning');
+    return;
+  }
+
+  driverUser = { ...driverUser, ...me, role: 'DRIVER' };
+  clearUser();
+  setDriver(driverUser);
+
+  document.getElementById('driver-auth-view').classList.add('hidden');
+  document.getElementById('driver-dashboard-view').classList.remove('hidden');
+  document.getElementById('nav-user-name').textContent = driverUser.name;
+  document.getElementById('driver-name-heading').textContent = driverUser.name;
+  document.getElementById('driver-meta').textContent = `${driverUser.phone} • ${driverUser.vehicle || 'Vehicle not added'} • ${driverUser.status.replace('_', ' ')}`;
+
+  const orders = await apiGet('/delivery/driver/orders');
+  renderDriverOrders(Array.isArray(orders) ? orders : []);
+}
+
+function renderDriverOrders(orders) {
+  const active = orders.filter(order => order.status !== 'DELIVERED');
+  const done = orders.filter(order => order.status === 'DELIVERED');
+  document.getElementById('driver-active-count').textContent = active.length;
+  document.getElementById('driver-done-count').textContent = done.length;
+  document.getElementById('driver-orders-caption').textContent = `${orders.length} total assigned order${orders.length === 1 ? '' : 's'}`;
+
+  const wrap = document.getElementById('driver-orders-list');
+  if (!orders.length) {
+    wrap.innerHTML = `
+      <div class="driver-empty-state">
+        <strong>No deliveries assigned yet.</strong>
+        <span>Your coordinator can assign you from the donation tracking page as soon as an order is booked.</span>
+      </div>
+    `;
+    return;
+  }
+
+  wrap.innerHTML = orders.map(order => `
+    <article class="driver-order-card">
+      <div class="driver-order-top">
+        <div>
+          <span class="driver-order-id">Order #${order.order_id}</span>
+          <h4>${order.requirement}</h4>
+        </div>
+        <span class="badge ${badgeClass(order.status)}">${order.status.replace('_', ' ')}</span>
+      </div>
+      <p>${order.description || 'No extra pickup notes were added for this delivery.'}</p>
+      <div class="driver-order-meta">
+        <span>${order.ngo_name}</span>
+        <span>${order.city || 'Location pending'}</span>
+        <span>${order.provider_name}</span>
+        <span>${order.pickup_time ? fmtDate(order.pickup_time) : 'Pickup time flexible'}</span>
+      </div>
+      <div class="driver-order-actions">
+        <a class="btn btn-primary btn-sm" href="/driver/track/${order.order_id}">
+          ${order.status === 'DELIVERED' ? 'View Timeline' : order.status === 'DELIVERING' ? 'Continue Delivery' : 'Start Delivery'}
+        </a>
+      </div>
+    </article>
+  `).join('');
+}
+</script>
+{% endblock %}

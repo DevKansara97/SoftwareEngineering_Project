@@ -1,310 +1,292 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Driver – Live Tracking | Seva Connect</title>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: 'Segoe UI', Arial, sans-serif;
-      background: #FAF6F0;
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 1.5rem;
-    }
-    .card {
-      background: #fff;
-      border-radius: 14px;
-      box-shadow: 0 4px 20px rgba(123,31,31,0.12);
-      padding: 2rem 1.75rem;
-      width: min(420px, 100%);
-      text-align: center;
-    }
-    h1  { color: #7B1F1F; font-size: 1.5rem; margin-bottom: 0.3rem; }
-    .sub { color: #6B5B5B; font-size: 0.9rem; margin-bottom: 2rem; }
+{% extends "base.html" %}
+{% block title %}Driver Delivery{% endblock %}
 
-    /* Big status indicator */
-    .status-circle {
-      width: 110px; height: 110px;
-      border-radius: 50%;
-      margin: 0 auto 1.5rem;
-      display: flex; flex-direction: column;
-      align-items: center; justify-content: center;
-      font-size: 2.2rem;
-      transition: background 0.4s;
-    }
-    .status-circle.idle      { background: #E9ECEF; }
-    .status-circle.active    { background: #D4EDDA; animation: pulse 2s infinite; }
-    .status-circle.error-bg  { background: #F8D7DA; }
+{% block head %}
+{% if google_maps_api_key %}
+<script src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key }}&callback=initMap&v=weekly" defer></script>
+{% endif %}
+{% endblock %}
 
-    @keyframes pulse {
-      0%,100% { box-shadow: 0 0 0 0   rgba(40,167,69,0.4); }
-      50%      { box-shadow: 0 0 0 16px rgba(40,167,69,0);   }
-    }
+{% block nav_links %}
+<li><a href="/driver">Driver Portal</a></li>
+<li><a id="nav-user-name" href="#">Driver</a></li>
+<li><a href="#" class="btn-nav" onclick="driverLogout()">Logout</a></li>
+{% endblock %}
 
-    .status-label { font-size: 0.78rem; font-weight: 700; margin-top: 4px; letter-spacing: 0.5px; }
+{% block content %}
+<section class="driver-track-shell">
+  <div class="container driver-track-grid">
+    <div class="driver-track-main">
+      <div class="driver-track-topbar">
+        <a href="/driver" class="driver-back-link">← Back to driver dashboard</a>
+        <span class="driver-live-pill" id="driver-live-pill">Awaiting delivery start</span>
+      </div>
 
-    .info-box {
-      background: #FAF6F0;
-      border-radius: 10px;
-      padding: 1rem;
-      margin-bottom: 1.25rem;
-      font-size: 0.85rem;
-      color: #2C2C2C;
-      text-align: left;
-      line-height: 1.8;
-    }
-    .info-box strong { color: #7B1F1F; }
+      <div id="driver-track-alert"></div>
 
-    .coord-row { font-family: monospace; color: #3A4A2A; font-size: 0.88rem; }
-    .accuracy  { font-size: 0.78rem; color: #6B5B5B; }
+      <div class="driver-track-card" id="driver-order-card">
+        <div class="spinner"></div>
+      </div>
 
-    .btn {
-      display: block; width: 100%;
-      padding: 14px;
-      border: none; border-radius: 10px;
-      font-size: 1rem; font-weight: 700;
-      cursor: pointer; transition: all 0.2s;
-      margin-bottom: 0.75rem;
-    }
-    .btn-start { background: #7B1F1F; color: #fff; }
-    .btn-start:hover { background: #9B2F2F; }
-    .btn-stop  { background: #6C757D; color: #fff; }
-    .btn-stop:hover  { background: #545B62; }
-    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+      <div class="driver-track-card">
+        <div class="driver-map-head">
+          <div>
+            <h3>Live route status</h3>
+            <p id="driver-map-caption">Location sharing has not started yet.</p>
+          </div>
+          <span class="coord-pill" id="driver-coords">Lat: - | Lng: -</span>
+        </div>
 
-    .alert {
-      padding: 0.75rem 1rem; border-radius: 8px;
-      font-size: 0.85rem; font-weight: 500; margin-bottom: 1rem;
-    }
-    .alert-error   { background: #F8D7DA; color: #721C24; }
-    .alert-success { background: #D4EDDA; color: #155724; }
-    .alert-info    { background: #D1ECF1; color: #0C5460; }
+        {% if google_maps_api_key %}
+        <div id="driver-map" class="driver-map-frame"></div>
+        {% else %}
+        <div class="driver-map-placeholder">
+          <strong>Google Maps key not configured</strong>
+          <span>Set <code>GOOGLE_MAPS_API_KEY</code> in the backend environment to render the live map.</span>
+        </div>
+        {% endif %}
 
-    .push-count {
-      font-size: 0.8rem; color: #6B5B5B; margin-top: 0.5rem;
-    }
-    .dot { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:5px; }
-    .dot.green { background:#28a745; }
-    .dot.grey  { background:#adb5bd; }
-  </style>
-</head>
-<body>
+        <div class="driver-track-footer">
+          <span id="driver-accuracy">Accuracy: -</span>
+          <span id="driver-push-count">Location pushes: 0</span>
+        </div>
+      </div>
+    </div>
 
-<div class="card">
-  <h1>🚚 Driver Tracking</h1>
-  <p class="sub">Seva Connect – Live Location Sharing</p>
+    <aside class="driver-track-sidebar">
+      <div class="driver-track-card">
+        <h3>Delivery controls</h3>
+        <p class="driver-panel-sub">Start the trip once pickup begins. Mark delivered only after the package reaches the NGO.</p>
+        <button class="btn btn-secondary w-full" id="start-driver-btn" onclick="startDelivery()">Start Delivery</button>
+        <button class="btn btn-primary w-full mt-1" id="complete-driver-btn" onclick="completeDelivery()" disabled>Mark Delivered</button>
+        <button class="btn btn-outline w-full mt-1" id="stop-driver-btn" onclick="stopTracking()" disabled>Pause GPS Sharing</button>
+      </div>
 
-  <!-- Status indicator -->
-  <div class="status-circle idle" id="status-circle">
-    <span id="status-icon">📍</span>
-    <span class="status-label" id="status-label">IDLE</span>
+      <div class="driver-track-card">
+        <h3>Delivery checklist</h3>
+        <div class="timeline" id="driver-timeline"></div>
+      </div>
+    </aside>
   </div>
+</section>
+{% endblock %}
 
-  <!-- Alert -->
-  <div id="alert-box"></div>
-
-  <!-- Order info -->
-  <div class="info-box" id="order-info">
-    <div>Loading order details…</div>
-  </div>
-
-  <!-- Coordinates -->
-  <div class="info-box" id="coord-box" style="display:none;">
-    <div class="coord-row">📍 Lat: <span id="lat-val">–</span></div>
-    <div class="coord-row">📍 Lng: <span id="lng-val">–</span></div>
-    <div class="accuracy">Accuracy: <span id="acc-val">–</span> metres</div>
-  </div>
-
-  <!-- Buttons -->
-  <button class="btn btn-start" id="start-btn" onclick="startTracking()" disabled>
-    ▶ Start Sharing Location
-  </button>
-  <button class="btn btn-stop"  id="stop-btn"  onclick="stopTracking()"  disabled>
-    ⏹ Stop Sharing
-  </button>
-
-  <div class="push-count" id="push-count"></div>
-
-  <!-- Instructions -->
-  <div style="margin-top:1.5rem;font-size:0.78rem;color:#6B5B5B;text-align:left;line-height:1.7;">
-    <strong>How to use:</strong><br/>
-    1. Open this page on your phone browser.<br/>
-    2. Tap <em>Start Sharing Location</em> and allow location access.<br/>
-    3. Keep this tab open while delivering — your location updates automatically.<br/>
-    4. Tap <em>Stop Sharing</em> when delivered.
-  </div>
-</div>
-
+{% block scripts %}
 <script>
-// ── Read order_id from URL: /driver/track/ORDER_ID ─────────────────────────
-const pathParts = window.location.pathname.split('/');
-const orderId   = parseInt(pathParts[pathParts.length - 1]);
+const orderId = {{ order_id }};
+let driverUser = null;
+let orderData = null;
+let watchId = null;
+let pushTimer = null;
+let pushCount = 0;
+let lastPosition = null;
+let map = null;
+let marker = null;
 
-const API = '/api';
-let watchId    = null;   // navigator.geolocation watchId
-let pushTimer  = null;   // setInterval for pushing to DB
-let pushCount  = 0;
-let lastPos    = null;   // {lat, lng}
-const PUSH_MS  = 5000;   // push every 5 seconds
+window.initMap = function() {
+  const mapEl = document.getElementById('driver-map');
+  if (!mapEl) return;
 
-// ── On load: fetch order info ───────────────────────────────────────────────
-window.addEventListener('DOMContentLoaded', async () => {
-  if (!orderId || isNaN(orderId)) {
-    showAlert('Invalid order ID in URL. Use /driver/track/ORDER_ID', 'error');
-    return;
-  }
+  map = new google.maps.Map(mapEl, {
+    zoom: 13,
+    center: { lat: 23.0225, lng: 72.5714 },
+    mapTypeControl: false,
+    streetViewControl: false
+  });
 
-  // Check geolocation support
-  if (!navigator.geolocation) {
-    showAlert('Your browser does not support GPS. Use Chrome or Firefox on Android/iOS.', 'error');
-    return;
-  }
-
-  // Load order info from server
-  try {
-    const res  = await fetch(`${API}/delivery/${orderId}`);
-    const data = await res.json();
-    if (data.error) {
-      document.getElementById('order-info').innerHTML =
-        `<span style="color:#721C24;">Order not found: ${data.error}</span>`;
-      return;
+  marker = new google.maps.Marker({
+    map,
+    visible: false,
+    icon: {
+      url: 'https://maps.google.com/mapfiles/ms/icons/red-dot.png'
     }
-    document.getElementById('order-info').innerHTML = `
-      <strong>Order #${data.order_id}</strong><br/>
-      Item: ${data.requirement || '–'}<br/>
-      Provider: ${data.provider_name}<br/>
-      Status: ${data.status.replace('_',' ')}
-    `;
-    document.getElementById('start-btn').disabled = false;
-    showAlert('Tap "Start Sharing Location" to begin.', 'info');
-  } catch(e) {
-    document.getElementById('order-info').innerHTML =
-      '<span style="color:#721C24;">Could not load order. Check your connection.</span>';
+  });
+};
+
+document.addEventListener('DOMContentLoaded', async () => {
+  driverUser = requireDriverAuth();
+  if (!driverUser) return;
+
+  document.getElementById('nav-user-name').textContent = driverUser.name;
+
+  const me = await apiGet('/delivery/driver/me');
+  if (me.error) {
+    clearDriver();
+    window.location.href = '/driver';
+    return;
   }
+
+  const order = await apiGet(`/delivery/${orderId}`);
+  if (order.error) {
+    showAlert('driver-track-alert', order.error, 'error');
+    document.getElementById('driver-order-card').innerHTML = '<p>Unable to load this delivery.</p>';
+    return;
+  }
+
+  orderData = order;
+  renderDriverOrder(order);
+  renderDriverTimeline(order.status);
+  syncButtons(order.status);
 });
 
-// ── Start GPS tracking ──────────────────────────────────────────────────────
-function startTracking() {
-  document.getElementById('start-btn').disabled = true;
-  document.getElementById('stop-btn').disabled  = false;
+function renderDriverOrder(order) {
+  document.getElementById('driver-order-card').innerHTML = `
+    <div class="driver-order-top">
+      <div>
+        <span class="driver-order-id">Order #${order.order_id}</span>
+        <h2>${order.requirement}</h2>
+      </div>
+      <span class="badge ${badgeClass(order.status)}">${order.status.replace('_', ' ')}</span>
+    </div>
+    <p>${order.description || 'No extra pickup instructions were shared for this order.'}</p>
+    <div class="driver-order-meta">
+      <span>NGO: ${order.ngo_name}</span>
+      <span>City: ${order.city || 'Location pending'}</span>
+      <span>Donor: ${order.donor_name}</span>
+      <span>Provider: ${order.provider_name}</span>
+      <span>${order.pickup_time ? `Pickup: ${order.pickup_time}` : 'Pickup time flexible'}</span>
+    </div>
+  `;
+}
 
-  setStatus('active', '📡', 'LIVE');
-  showAlert('Requesting GPS permission…', 'info');
+function renderDriverTimeline(status) {
+  const steps = [
+    { key: 'NOT_DELIVERED', icon: '1', label: 'Assigned', sub: 'Delivery is ready for pickup' },
+    { key: 'DELIVERING', icon: '2', label: 'In Transit', sub: 'GPS updates are flowing to Seva Connect' },
+    { key: 'DELIVERED', icon: '3', label: 'Delivered', sub: 'Delivery completed and closed' }
+  ];
+  const idx = steps.findIndex(step => step.key === status);
+  document.getElementById('driver-timeline').innerHTML = steps.map((step, i) => {
+    const cls = i < idx ? 'done' : i === idx ? 'active' : 'pending';
+    return `
+      <div class="timeline-step">
+        <div class="timeline-icon ${cls}">${step.icon}</div>
+        <div>
+          <div class="timeline-label">${step.label}</div>
+          <div class="timeline-sub">${step.sub}</div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
 
-  // Watch position (updates whenever device moves)
+function syncButtons(status) {
+  const startBtn = document.getElementById('start-driver-btn');
+  const completeBtn = document.getElementById('complete-driver-btn');
+  const stopBtn = document.getElementById('stop-driver-btn');
+  const livePill = document.getElementById('driver-live-pill');
+
+  startBtn.disabled = status !== 'NOT_DELIVERED';
+  completeBtn.disabled = status !== 'DELIVERING';
+  stopBtn.disabled = status !== 'DELIVERING';
+
+  if (status === 'DELIVERING') {
+    livePill.textContent = 'Live delivery in progress';
+    livePill.classList.add('is-live');
+  } else if (status === 'DELIVERED') {
+    livePill.textContent = 'Delivery completed';
+    livePill.classList.remove('is-live');
+  } else {
+    livePill.textContent = 'Awaiting delivery start';
+    livePill.classList.remove('is-live');
+  }
+}
+
+async function startDelivery() {
+  if (!navigator.geolocation) {
+    showAlert('driver-track-alert', 'This browser does not support GPS tracking.', 'error');
+    return;
+  }
+
+  const statusUpdate = await apiPut('/delivery/status', { order_id: orderId, status: 'DELIVERING' });
+  if (statusUpdate.error) {
+    showAlert('driver-track-alert', statusUpdate.error, 'error');
+    return;
+  }
+
+  orderData.status = 'DELIVERING';
+  renderDriverTimeline(orderData.status);
+  syncButtons(orderData.status);
+  showAlert('driver-track-alert', 'Delivery started. GPS sharing is now active.', 'success');
+
   watchId = navigator.geolocation.watchPosition(
     onPosition,
-    onGpsError,
-    {
-      enableHighAccuracy: true,   // use GPS chip, not just WiFi
-      maximumAge:         0,      // always fresh
-      timeout:            10000
-    }
+    onPositionError,
+    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
   );
 
-  // Also push on a timer (in case watchPosition doesn't fire often enough)
+  if (pushTimer) clearInterval(pushTimer);
   pushTimer = setInterval(() => {
-    if (lastPos) pushToDB(lastPos.lat, lastPos.lng);
-  }, PUSH_MS);
-
-  // Mark delivery as IN_PROGRESS
-  fetch(`${API}/delivery/status`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ order_id: orderId, status: 'DELIVERING' })
-  });
+    if (lastPosition) pushLocation(lastPosition.lat, lastPosition.lng);
+  }, 5000);
 }
 
-// ── Called every time device position changes ───────────────────────────────
-function onPosition(pos) {
-  const lat = pos.coords.latitude;
-  const lng = pos.coords.longitude;
-  const acc = Math.round(pos.coords.accuracy);
-
-  lastPos = { lat, lng };
-
-  document.getElementById('coord-box').style.display = 'block';
-  document.getElementById('lat-val').textContent = lat.toFixed(6);
-  document.getElementById('lng-val').textContent = lng.toFixed(6);
-  document.getElementById('acc-val').textContent = acc;
-
-  // Push immediately on first position, then let the timer handle the rest
-  pushToDB(lat, lng);
-  clearAlert();
-}
-
-// ── Push to Oracle DB via Flask API ────────────────────────────────────────
-async function pushToDB(lat, lng) {
-  try {
-    await fetch(`${API}/tracking/update`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ order_id: orderId, lat, lng })
-    });
-    pushCount++;
-    document.getElementById('push-count').innerHTML =
-      `<span class="dot green"></span>Location pushed ${pushCount} time${pushCount > 1 ? 's' : ''}`;
-  } catch(e) {
-    document.getElementById('push-count').innerHTML =
-      `<span class="dot grey"></span>Push failed – retrying…`;
+async function completeDelivery() {
+  const statusUpdate = await apiPut('/delivery/status', { order_id: orderId, status: 'DELIVERED' });
+  if (statusUpdate.error) {
+    showAlert('driver-track-alert', statusUpdate.error, 'error');
+    return;
   }
+
+  stopTracking();
+  orderData.status = 'DELIVERED';
+  renderDriverTimeline(orderData.status);
+  syncButtons(orderData.status);
+  showAlert('driver-track-alert', 'Delivery marked as completed.', 'success');
 }
 
-// ── Stop tracking ───────────────────────────────────────────────────────────
 function stopTracking() {
-  if (watchId !== null) { navigator.geolocation.clearWatch(watchId); watchId = null; }
-  if (pushTimer)        { clearInterval(pushTimer); pushTimer = null; }
+  if (watchId !== null) {
+    navigator.geolocation.clearWatch(watchId);
+    watchId = null;
+  }
+  if (pushTimer) {
+    clearInterval(pushTimer);
+    pushTimer = null;
+  }
 
-  document.getElementById('start-btn').disabled = false;
-  document.getElementById('stop-btn').disabled  = true;
-  setStatus('idle', '📍', 'STOPPED');
-  showAlert('Location sharing stopped.', 'info');
-}
-
-// ── GPS error handler ───────────────────────────────────────────────────────
-function onGpsError(err) {
-  setStatus('error-bg', '⚠️', 'ERROR');
-  const msgs = {
-    1: 'Location access denied. Please allow location in browser settings.',
-    2: 'GPS signal not available. Move to an open area.',
-    3: 'GPS timed out. Trying again…'
-  };
-  showAlert(msgs[err.code] || 'GPS error: ' + err.message, 'error');
-  // Auto-retry on timeout
-  if (err.code === 3) setTimeout(startTracking, 3000);
-}
-
-// ── UI helpers ──────────────────────────────────────────────────────────────
-function setStatus(cls, icon, label) {
-  const el = document.getElementById('status-circle');
-  el.className = `status-circle ${cls}`;
-  document.getElementById('status-icon').textContent  = icon;
-  document.getElementById('status-label').textContent = label;
-}
-
-function showAlert(msg, type = 'info') {
-  document.getElementById('alert-box').innerHTML =
-    `<div class="alert alert-${type}">${msg}</div>`;
-}
-
-function clearAlert() {
-  document.getElementById('alert-box').innerHTML = '';
-}
-
-// ── Keep screen awake using Wake Lock API (if supported) ───────────────────
-async function requestWakeLock() {
-  if ('wakeLock' in navigator) {
-    try {
-      await navigator.wakeLock.request('screen');
-    } catch(e) { /* silently ignore if denied */ }
+  if (orderData && orderData.status === 'DELIVERING') {
+    document.getElementById('driver-map-caption').textContent = 'GPS sharing paused. Resume by refreshing and starting tracking again.';
   }
 }
-requestWakeLock();
+
+function onPosition(position) {
+  const lat = position.coords.latitude;
+  const lng = position.coords.longitude;
+  lastPosition = { lat, lng };
+
+  document.getElementById('driver-coords').textContent = `Lat: ${lat.toFixed(6)} | Lng: ${lng.toFixed(6)}`;
+  document.getElementById('driver-accuracy').textContent = `Accuracy: ${Math.round(position.coords.accuracy)} m`;
+  document.getElementById('driver-map-caption').textContent = 'GPS is actively sharing your position to the donor and NGO dashboards.';
+
+  if (map && marker) {
+    const point = { lat, lng };
+    marker.setPosition(point);
+    marker.setVisible(true);
+    map.panTo(point);
+  }
+
+  pushLocation(lat, lng);
+}
+
+function onPositionError(error) {
+  const messages = {
+    1: 'Location access denied. Please allow location access and try again.',
+    2: 'GPS signal unavailable. Move to an open area and retry.',
+    3: 'GPS lookup timed out. Keeping the delivery active and retrying shortly.'
+  };
+  showAlert('driver-track-alert', messages[error.code] || error.message, 'warning');
+}
+
+async function pushLocation(lat, lng) {
+  const result = await apiPost('/tracking/update', { order_id: orderId, lat, lng });
+  if (result.error) {
+    showAlert('driver-track-alert', result.error, 'error');
+    return;
+  }
+
+  pushCount += 1;
+  document.getElementById('driver-push-count').textContent = `Location pushes: ${pushCount}`;
+}
 </script>
-</body>
-</html>
+{% endblock %}

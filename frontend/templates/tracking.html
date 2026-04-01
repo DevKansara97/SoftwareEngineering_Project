@@ -2,312 +2,293 @@
 {% block title %}Track Delivery{% endblock %}
 
 {% block head %}
-<!-- Google Maps JS API  –  replace YOUR_API_KEY with your actual key -->
-<!-- Get one free: https://console.cloud.google.com → Maps JavaScript API -->
-<script src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&callback=initMap&v=weekly" defer></script>
-<style>
-  #map {
-    width: 100%; height: 420px;
-    border-radius: 10px;
-    border: 1.5px solid var(--border);
-  }
-  #map-placeholder {
-    width: 100%; height: 200px;
-    border-radius: 10px;
-    border: 2px dashed var(--border);
-    display: flex; flex-direction: column;
-    align-items: center; justify-content: center;
-    color: var(--text-muted); gap: 0.4rem;
-    font-size: 0.9rem;
-  }
-  .live-dot {
-    display: inline-block; width: 10px; height: 10px;
-    border-radius: 50%; background: #28a745;
-    animation: blink 1.2s infinite;
-    margin-right: 6px; vertical-align: middle;
-  }
-  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.2} }
-  .coord-pill {
-    font-family: monospace; font-size: 0.82rem;
-    background: var(--bg); padding: 5px 12px;
-    border-radius: 20px; color: var(--olive-dark);
-  }
-  .driver-link-box {
-    background: #FFF8F8;
-    border: 1.5px solid var(--blush);
-    border-radius: 10px;
-    padding: 1rem 1.25rem;
-    font-size: 0.88rem;
-  }
-  .driver-url {
-    font-family: monospace;
-    background: var(--bg);
-    padding: 8px 12px;
-    border-radius: 7px;
-    word-break: break-all;
-    color: var(--red);
-    display: block;
-    margin: 0.5rem 0;
-  }
-</style>
+{% if google_maps_api_key %}
+<script src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key }}&callback=initMap&v=weekly" defer></script>
+{% endif %}
 {% endblock %}
 
 {% block nav_links %}
-<li><a href="/donor/dashboard">Dashboard</a></li>
-<li><a id="nav-user-name" href="#">…</a></li>
+<li><a href="/">Home</a></li>
+<li><a id="nav-user-name" href="#">Account</a></li>
 <li><a href="#" class="btn-nav" onclick="logout()">Logout</a></li>
 {% endblock %}
 
 {% block content %}
-<div class="container" style="max-width:800px;">
-  <a href="/donor/dashboard" style="color:var(--red);font-size:0.9rem;">← Back to Dashboard</a>
+<section class="tracking-shell">
+  <div class="container tracking-grid">
+    <div class="tracking-main">
+      <a href="#" class="driver-back-link" id="tracking-back-link">← Back to dashboard</a>
+      <div id="tracking-alert"></div>
 
-  <h1 class="section-title" style="margin-top:1.5rem;">Live Delivery Tracking</h1>
-  <p class="section-sub">Donation ID: #{{ order_id }}</p>
-
-  <div id="alert-box"></div>
-
-  <!-- Donation summary -->
-  <div class="card" id="donation-summary"><div class="spinner"></div></div>
-
-  <!-- Driver link – share this with the driver -->
-  <div class="card" id="driver-link-card" style="display:none;">
-    <div class="card-title">🔗 Share with Driver</div>
-    <div class="driver-link-box">
-      <p>Send this link to the driver. They open it on their phone browser — no app needed.</p>
-      <span class="driver-url" id="driver-url"></span>
-      <div class="flex gap-1 mt-1">
-        <button class="btn btn-primary btn-sm"  onclick="copyDriverLink()">📋 Copy Link</button>
-        <button class="btn btn-outline btn-sm"  onclick="shareDriverLink()">📤 Share</button>
+      <div class="tracking-card" id="tracking-summary-card">
+        <div class="spinner"></div>
       </div>
-      <p style="font-size:0.78rem;color:var(--text-muted);margin-top:0.6rem;">
-        The driver keeps the tab open while delivering. Their GPS is pushed to the server every 5 s.
-      </p>
-    </div>
-  </div>
 
-  <!-- Live Map -->
-  <div class="card" style="padding:1.25rem;">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;flex-wrap:wrap;gap:0.5rem;">
-      <div class="card-title" style="margin:0;">📍 Live Map</div>
-      <div>
-        <span class="live-dot" id="live-dot" style="display:none;"></span>
-        <span id="live-label" style="font-size:0.82rem;color:var(--text-muted);">Waiting for driver…</span>
+      <div class="tracking-card">
+        <div class="driver-map-head">
+          <div>
+            <h3>Live driver location</h3>
+            <p id="tracking-map-caption">Waiting for the assigned driver to start sharing GPS.</p>
+          </div>
+          <span class="coord-pill" id="tracking-coords">Lat: - | Lng: -</span>
+        </div>
+
+        {% if google_maps_api_key %}
+        <div id="tracking-map" class="driver-map-frame"></div>
+        {% else %}
+        <div class="driver-map-placeholder">
+          <strong>Google Maps key not configured</strong>
+          <span>Set <code>GOOGLE_MAPS_API_KEY</code> in the backend environment to enable the live map.</span>
+        </div>
+        {% endif %}
+
+        <div class="driver-track-footer">
+          <span id="tracking-updated">No live location received yet.</span>
+          <span id="tracking-pulse" class="driver-live-pill">Offline</span>
+        </div>
       </div>
     </div>
 
-    <!-- Shown when no API key -->
-    <div id="map-placeholder">
-      <span style="font-size:2rem;">🗺️</span>
-      <strong>Google Maps not configured</strong>
-      <span>Replace <code>YOUR_API_KEY</code> in tracking.html line 7</span>
-      <a href="https://console.cloud.google.com/google/maps-apis" target="_blank"
-         style="color:var(--red);font-size:0.82rem;">Get a free key →</a>
-    </div>
-    <div id="map" class="hidden"></div>
+    <aside class="tracking-sidebar">
+      <div class="tracking-card">
+        <h3>Delivery timeline</h3>
+        <div class="timeline" id="tracking-timeline"></div>
+      </div>
 
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:0.75rem;flex-wrap:wrap;gap:0.5rem;">
-      <div class="coord-pill" id="coord-pill">Lat: –  |  Lng: –</div>
-      <div style="font-size:0.78rem;color:var(--text-muted);" id="last-updated">Not yet received</div>
-    </div>
-  </div>
+      <div class="tracking-card" id="driver-assignment-card">
+        <h3>Driver assignment</h3>
+        <div id="assigned-driver-box">
+          <p class="section-sub" style="margin-bottom:0;">Loading driver details...</p>
+        </div>
+        <div id="driver-assign-form" class="hidden">
+          <div class="form-group">
+            <label class="form-label">Assign a driver</label>
+            <select id="tracking-driver-select" class="form-control"></select>
+          </div>
+          <button class="btn btn-primary w-full" onclick="assignDriver()">Assign Driver</button>
+        </div>
+      </div>
 
-  <!-- Status Timeline -->
-  <div class="card">
-    <div class="card-title">Delivery Status</div>
-    <div class="timeline" id="timeline"></div>
-    <div id="tracking-info" style="margin-top:1rem;font-size:0.9rem;"></div>
+      <div class="tracking-card">
+        <h3>Driver portal</h3>
+        <p class="driver-panel-sub">Drivers now use their own dashboard. Ask the assigned driver to open the driver portal and log in with their registered phone number.</p>
+        <a class="btn btn-outline w-full" href="/driver">Open Driver Portal</a>
+      </div>
+    </aside>
   </div>
-
-  <!-- Status update (for NGO / admin use) -->
-  <div class="card" id="update-panel">
-    <div class="card-title">Update Status</div>
-    <div class="flex gap-1 flex-wrap">
-      <button class="btn btn-outline btn-sm" onclick="updateDelivery('NOT_DELIVERED')">📦 Created</button>
-      <button class="btn btn-secondary btn-sm" onclick="updateDelivery('DELIVERING')">🚚 In Transit</button>
-      <button class="btn btn-primary btn-sm"  onclick="updateDelivery('DELIVERED')">✅ Delivered</button>
-    </div>
-    <div id="update-alert" class="mt-1"></div>
-  </div>
-</div>
+</section>
 {% endblock %}
 
 {% block scripts %}
 <script>
-// ── Config ──────────────────────────────────────────────────────────────────
-const donationId = {{ order_id }};
-const POLL_MS    = 5000;   // poll for driver location every 5 s
+const orderId = {{ order_id }};
+let currentUser = null;
+let orderData = null;
+let trackingTimer = null;
+let orderRefreshTimer = null;
+let map = null;
+let marker = null;
 
-let orderId, map, driverMarker, mapReady = false, pollTimer = null;
-let lastLat = null, lastLng = null;
+window.initMap = function() {
+  const mapEl = document.getElementById('tracking-map');
+  if (!mapEl) return;
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Google Maps init (callback from API script)
-// ─────────────────────────────────────────────────────────────────────────────
-window.initMap = function () {
-  map = new google.maps.Map(document.getElementById('map'), {
+  map = new google.maps.Map(mapEl, {
     zoom: 13,
-    center: { lat: 23.0225, lng: 72.5714 },  // Ahmedabad default
+    center: { lat: 23.0225, lng: 72.5714 },
     mapTypeControl: false,
-    streetViewControl: false,
+    streetViewControl: false
   });
 
-  driverMarker = new google.maps.Marker({
+  marker = new google.maps.Marker({
     map,
-    title: 'Driver',
+    visible: false,
     icon: {
-      url: 'https://maps.google.com/mapfiles/ms/icons/red-dot.png',
-    },
-    visible: false,   // hidden until first location arrives
+      url: 'https://maps.google.com/mapfiles/ms/icons/red-dot.png'
+    }
   });
-
-  new google.maps.InfoWindow({ content: '<strong>🚚 Delivery Driver</strong>' })
-    .open(map, driverMarker);
-
-  mapReady = true;
-  document.getElementById('map-placeholder').classList.add('hidden');
-  document.getElementById('map').classList.remove('hidden');
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Poll Oracle DB for latest driver location
-// ─────────────────────────────────────────────────────────────────────────────
-async function pollLocation() {
-  if (!orderId) return;
-  try {
-    const data = await apiGet('/tracking/location', { order_id: orderId });
-    if (data.lat && data.lng) {
-      const lat = parseFloat(data.lat);
-      const lng = parseFloat(data.lng);
-
-      // Only update UI if position actually changed
-      if (lat !== lastLat || lng !== lastLng) {
-        lastLat = lat; lastLng = lng;
-        updateMapMarker(lat, lng);
-        document.getElementById('coord-pill').textContent =
-          `Lat: ${lat.toFixed(6)}  |  Lng: ${lng.toFixed(6)}`;
-        document.getElementById('last-updated').textContent =
-          `Updated: ${new Date().toLocaleTimeString('en-IN')}`;
-        document.getElementById('live-dot').style.display  = 'inline-block';
-        document.getElementById('live-label').textContent  = 'Driver location live';
-        document.getElementById('live-label').style.color  = '#28a745';
-      }
-    }
-  } catch(e) { /* silent – keep polling */ }
-}
-
-function updateMapMarker(lat, lng) {
-  if (!mapReady) return;
-  const pos = { lat, lng };
-  driverMarker.setPosition(pos);
-  driverMarker.setVisible(true);
-  map.panTo(pos);
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Page load
-// ─────────────────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
-  requireAuth();
+  currentUser = requireAuth();
+  if (!currentUser) return;
 
-  // Load donation info
-  const don = await apiGet(`/donations/${donationId}`);
-  if (don.error) { showAlert('alert-box', don.error, 'error'); return; }
-  document.getElementById('donation-summary').innerHTML = `
-    <div class="card-title">Donation Summary</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;font-size:0.9rem;">
-      <div><strong>Item:</strong> ${don.title}</div>
-      <div><strong>NGO:</strong> ${don.ngo_name}</div>
-      <div><strong>City:</strong> ${don.city || '–'}</div>
-      <div><strong>Donor:</strong> ${don.donor_name}</div>
-      <div><strong>Status:</strong>
-        <span class="badge ${badgeClass(don.status)}">${don.status.replace('_',' ')}</span>
-      </div>
-      <div><strong>Date:</strong> ${fmtDate(don.created_at)}</div>
-    </div>
-  `;
-
-  // Load delivery order
-  const order = await apiGet(`/delivery/donation/${donationId}`);
-  if (!order.order_id) {
-    document.getElementById('timeline').innerHTML =
-      '<p style="color:var(--text-muted);">No delivery order yet.</p>';
-    document.getElementById('update-panel').classList.add('hidden');
-    return;
-  }
-  orderId = order.order_id;
-
-  // Show driver link
-  const driverURL = `${window.location.origin}/driver/track/${orderId}`;
-  document.getElementById('driver-url').textContent = driverURL;
-  document.getElementById('driver-link-card').style.display = 'block';
-
-  renderTimeline(order.delivery_status);
-  document.getElementById('tracking-info').innerHTML = `
-    <div style="background:var(--bg);padding:0.85rem;border-radius:8px;font-size:0.88rem;
-                display:grid;grid-template-columns:1fr 1fr;gap:0.4rem;">
-      <div>🚚 <strong>Provider:</strong> ${order.provider_name}</div>
-      <div>💰 <strong>Cost:</strong> ₹${order.estimated_cost || '–'}</div>
-      ${order.pickup_time ? `<div>⏰ <strong>Pickup:</strong> ${order.pickup_time}</div>` : ''}
-      <div>🆔 <strong>Order:</strong> #${order.order_id}</div>
-    </div>
-  `;
-
-  // Start polling immediately and every 5 s
-  pollLocation();
-  pollTimer = setInterval(pollLocation, POLL_MS);
+  document.getElementById('tracking-back-link').href = currentUser.role === 'NGO' ? '/ngo/dashboard' : '/donor/dashboard';
+  await loadOrder();
+  trackingTimer = setInterval(loadLocation, 5000);
+  orderRefreshTimer = setInterval(refreshOrderState, 10000);
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Timeline
-// ─────────────────────────────────────────────────────────────────────────────
+async function loadOrder() {
+  const order = await apiGet(`/delivery/${orderId}`);
+  if (order.error) {
+    showAlert('tracking-alert', order.error, 'error');
+    return;
+  }
+
+  orderData = order;
+  renderSummary(order);
+  renderTimeline(order.status);
+  renderDriverCard(order.driver);
+
+  if (!order.driver) {
+    await loadAssignableDrivers();
+  } else {
+    document.getElementById('driver-assign-form').classList.add('hidden');
+  }
+
+  await loadLocation();
+}
+
+function renderSummary(order) {
+  document.getElementById('tracking-summary-card').innerHTML = `
+    <div class="driver-order-top">
+      <div>
+        <span class="driver-order-id">Order #${order.order_id}</span>
+        <h2>${order.requirement}</h2>
+      </div>
+      <span class="badge ${badgeClass(order.status)}">${order.status.replace('_', ' ')}</span>
+    </div>
+    <p>${order.description || 'No additional order description was added.'}</p>
+    <div class="driver-order-meta">
+      <span>NGO: ${order.ngo_name}</span>
+      <span>Donor: ${order.donor_name}</span>
+      <span>Provider: ${order.provider_name}</span>
+      <span>City: ${order.city || 'Location pending'}</span>
+      <span>${order.pickup_time ? `Pickup: ${order.pickup_time}` : 'Pickup time flexible'}</span>
+      <span>${order.estimated_cost ? `Estimated cost: ₹${order.estimated_cost}` : 'Cost pending'}</span>
+    </div>
+  `;
+}
+
 function renderTimeline(status) {
   const steps = [
-    { key: 'NOT_DELIVERED', icon: '📦', label: 'Order Created',  sub: 'Delivery booked' },
-    { key: 'DELIVERING',    icon: '🚚', label: 'In Transit',     sub: 'Driver is on the way' },
-    { key: 'DELIVERED',     icon: '✅', label: 'Delivered',       sub: 'Package handed to NGO' },
+    { key: 'NOT_DELIVERED', icon: '1', label: 'Booked', sub: 'Delivery order created and awaiting pickup' },
+    { key: 'DELIVERING', icon: '2', label: 'In Transit', sub: 'Driver is actively moving toward the NGO' },
+    { key: 'DELIVERED', icon: '3', label: 'Delivered', sub: 'Donation handed over successfully' }
   ];
-  const idx = steps.findIndex(s => s.key === status);
-  document.getElementById('timeline').innerHTML = steps.map((s, i) => {
+  const idx = steps.findIndex(step => step.key === status);
+  document.getElementById('tracking-timeline').innerHTML = steps.map((step, i) => {
     const cls = i < idx ? 'done' : i === idx ? 'active' : 'pending';
     return `
       <div class="timeline-step">
-        <div class="timeline-icon ${cls}">${s.icon}</div>
+        <div class="timeline-icon ${cls}">${step.icon}</div>
         <div>
-          <div class="timeline-label" style="${cls==='active'?'color:var(--red)':''}">${s.label}</div>
-          <div class="timeline-sub">${s.sub}</div>
+          <div class="timeline-label">${step.label}</div>
+          <div class="timeline-sub">${step.sub}</div>
         </div>
-      </div>`;
+      </div>
+    `;
   }).join('');
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Status update
-// ─────────────────────────────────────────────────────────────────────────────
-async function updateDelivery(status) {
-  if (!orderId) return;
-  const data = await apiPut('/delivery/status', { order_id: orderId, status });
-  if (data.error) { showAlert('update-alert', data.error, 'error'); return; }
-  showAlert('update-alert', `Status: ${status.replace('_',' ')}`, 'success');
-  renderTimeline(status);
+function renderDriverCard(driver) {
+  const box = document.getElementById('assigned-driver-box');
+  if (!driver) {
+    box.innerHTML = `
+      <div class="driver-empty-state">
+        <strong>No driver assigned yet.</strong>
+        <span>Assign one from the list below so the delivery can move into the driver portal workflow.</span>
+      </div>
+    `;
+    return;
+  }
+
+  box.innerHTML = `
+    <div class="driver-value-card" style="margin:0;">
+      <strong>${driver.name}</strong>
+      <span>${driver.phone} • ${driver.vehicle || 'Vehicle not specified'}</span>
+      <span>Status: ${driver.status.replace('_', ' ')}</span>
+    </div>
+  `;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Driver link helpers
-// ─────────────────────────────────────────────────────────────────────────────
-function copyDriverLink() {
-  const url = document.getElementById('driver-url').textContent;
-  navigator.clipboard.writeText(url)
-    .then(() => showAlert('update-alert', '✅ Link copied!', 'success'))
-    .catch(() => showAlert('update-alert', 'Copy failed – select and copy manually.', 'error'));
+async function loadAssignableDrivers() {
+  const data = await apiGet('/delivery/drivers');
+  if (data.error) {
+    showAlert('tracking-alert', data.error, 'error');
+    return;
+  }
+
+  const availableDrivers = data.filter(driver => driver.active_orders === 0);
+  const select = document.getElementById('tracking-driver-select');
+  if (!availableDrivers.length) {
+    document.getElementById('driver-assign-form').classList.add('hidden');
+    select.innerHTML = '';
+    return;
+  }
+
+  select.innerHTML = availableDrivers.map(driver => `
+    <option value="${driver.driver_id}">
+      ${driver.name} • ${driver.phone} • ${driver.vehicle || 'Vehicle pending'}
+    </option>
+  `).join('');
+  document.getElementById('driver-assign-form').classList.remove('hidden');
 }
 
-function shareDriverLink() {
-  const url = document.getElementById('driver-url').textContent;
-  if (navigator.share) {
-    navigator.share({ title: 'Seva Connect – Driver Tracking', url });
-  } else {
-    copyDriverLink();
+async function assignDriver() {
+  const driverId = document.getElementById('tracking-driver-select').value;
+  if (!driverId) {
+    showAlert('tracking-alert', 'Choose a driver to assign first.', 'error');
+    return;
+  }
+
+  const data = await apiPost('/delivery/assign', { order_id: orderId, driver_id: Number(driverId) });
+  if (data.error) {
+    showAlert('tracking-alert', data.error, 'error');
+    return;
+  }
+
+  showAlert('tracking-alert', 'Driver assigned successfully.', 'success');
+  await loadOrder();
+}
+
+async function loadLocation() {
+  const data = await apiGet('/tracking/location', { order_id: orderId });
+  if (data.error) {
+    return;
+  }
+
+  if (data.lat === null || data.lng === null) {
+    return;
+  }
+
+  const lat = Number(data.lat);
+  const lng = Number(data.lng);
+  document.getElementById('tracking-coords').textContent = `Lat: ${lat.toFixed(6)} | Lng: ${lng.toFixed(6)}`;
+  document.getElementById('tracking-updated').textContent = `Updated: ${new Date(data.updated_at).toLocaleString('en-IN')}`;
+  document.getElementById('tracking-map-caption').textContent = 'The assigned driver is actively sharing GPS updates.';
+
+  const pulse = document.getElementById('tracking-pulse');
+  pulse.textContent = 'Live';
+  pulse.classList.add('is-live');
+
+  if (map && marker) {
+    const point = { lat, lng };
+    marker.setPosition(point);
+    marker.setVisible(true);
+    map.panTo(point);
+  }
+}
+
+async function refreshOrderState() {
+  const order = await apiGet(`/delivery/${orderId}`);
+  if (order.error) return;
+
+  if (
+    !orderData ||
+    order.status !== orderData.status ||
+    (order.driver && order.driver.driver_id) !== (orderData.driver && orderData.driver.driver_id)
+  ) {
+    orderData = order;
+    renderSummary(order);
+    renderTimeline(order.status);
+    renderDriverCard(order.driver);
+    if (!order.driver) {
+      await loadAssignableDrivers();
+    } else {
+      document.getElementById('driver-assign-form').classList.add('hidden');
+    }
   }
 }
 </script>

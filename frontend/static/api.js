@@ -9,6 +9,12 @@ function getUser() {
 }
 function setUser(u) { localStorage.setItem('seva_user', JSON.stringify(u)); }
 function clearUser() { localStorage.removeItem('seva_user'); }
+function getDriver() {
+  try { return JSON.parse(localStorage.getItem('seva_driver') || 'null'); }
+  catch { return null; }
+}
+function setDriver(d) { localStorage.setItem('seva_driver', JSON.stringify(d)); }
+function clearDriver() { localStorage.removeItem('seva_driver'); }
 
 function requireAuth(role = null) {
   const u = getUser();
@@ -19,6 +25,12 @@ function requireAuth(role = null) {
     return null;
   }
   return u;
+}
+
+function requireDriverAuth() {
+  const d = getDriver();
+  if (!d) { window.location.href = '/driver'; return null; }
+  return d;
 }
 
 /* ── HTTP helpers ────────────────────────────────────────────────────────── */
@@ -73,8 +85,10 @@ function spinner(containerId) {
 
 function setNavUser() {
   const u = getUser();
+  const d = getDriver();
   const nameEl = document.getElementById('nav-user-name');
   if (nameEl && u) nameEl.textContent = u.name;
+  if (nameEl && !u && d) nameEl.textContent = d.name;
 
   // load unread notification count
   if (u) {
@@ -116,12 +130,22 @@ function closeModal(id) { document.getElementById(id).classList.remove('open'); 
 
 async function logout() {
   await apiPost('/auth/logout');
+  await apiPost('/delivery/driver-logout');
   clearUser();
+  clearDriver();
   window.location.href = '/';
+}
+
+async function driverLogout() {
+  await apiPost('/delivery/driver-logout');
+  clearDriver();
+  clearUser();
+  window.location.href = '/driver';
 }
 
 // Expose for inline onclick
 window.logout     = logout;
+window.driverLogout = driverLogout;
 window.openModal  = openModal;
 window.closeModal = closeModal;
 

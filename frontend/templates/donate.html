@@ -72,7 +72,7 @@
 {% block scripts %}
 <script>
 const requirementId = {{ requirement_id }};
-let user, donationId, selectedProvider, selectedCost;
+let user, donationId, selectedProvider, selectedCost, createdOrderId;
 
 document.addEventListener('DOMContentLoaded', async () => {
   user = requireAuth('DONOR');
@@ -173,18 +173,18 @@ async function bookDelivery() {
 
   // Show confirmation
   document.getElementById('step3').classList.remove('hidden');
+  createdOrderId = data.order_id;
   document.getElementById('confirmation-details').innerHTML = `
     <div style="font-size:0.9rem;">
+      <p>🧾 <strong>Order ID:</strong> #${data.order_id}</p>
       <p>📦 <strong>Delivery Partner:</strong> ${selectedProvider}</p>
       <p>💰 <strong>Estimated Cost:</strong> ₹${selectedCost}</p>
-      <p>📍 <strong>Tracking Link:</strong> <a href="${data.tracking_link}" style="color:var(--red);">${data.tracking_link}</a></p>
+      <p>📍 <strong>Track Order:</strong> <a href="/tracking/${data.order_id}" style="color:var(--red);">Open live tracking dashboard</a></p>
+      ${data.assigned_driver ? `<p>🚚 <strong>Assigned Driver:</strong> ${data.assigned_driver.name} (${data.assigned_driver.phone})</p>` : `<p>🚚 <strong>Assigned Driver:</strong> You can assign one from the tracking dashboard.</p>`}
       ${pickupRaw ? `<p>⏰ <strong>Pickup Time:</strong> ${pickupRaw.replace('T',' ')}</p>` : ''}
     </div>
   `;
   document.getElementById('step3').scrollIntoView({ behavior: 'smooth' });
-
-  // Update donation status to CONFIRMED
-  await apiPut('/donations/status', { donation_id: donationId, status: 'CONFIRMED' });
 }
 </script>
 {% endblock %}
