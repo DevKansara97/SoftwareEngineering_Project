@@ -4,6 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>{% block title %}Seva Connect{% endblock %} | NGO Donation Platform</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/style.css" />
   {% block head %}{% endblock %}
 </head>
@@ -12,15 +15,38 @@
 <!-- ── Navbar ───────────────────────────────────────────────────────────── -->
 <nav class="navbar">
   <a class="navbar-brand" href="/">
-    <span class="logo-text">सेवा</span>
-    <span>Connect</span>
+    <img src="/static/Logo.png" alt="Seva Connect Logo" class="navbar-logo">
   </a>
+
+  <button class="nav-hamburger" id="nav-hamburger" aria-label="Toggle menu">
+    <span></span><span></span><span></span>
+  </button>
+
   <ul class="navbar-links" id="nav-links">
     {% block nav_links %}
     <li><a href="/">Home</a></li>
+
+    <li class="nav-dropdown">
+      <a href="#" class="nav-dropdown-toggle">Get Involved <span class="nav-caret">▾</span></a>
+      <ul class="nav-dropdown-menu">
+        <li><a href="/donor/search">Browse Requirements</a></li>
+        <li><a href="/register?role=DONOR">Register as Donor</a></li>
+        <li><a href="/register?role=NGO">Partner as NGO</a></li>
+      </ul>
+    </li>
+
+    <li class="nav-dropdown">
+      <a href="#" class="nav-dropdown-toggle">About <span class="nav-caret">▾</span></a>
+      <ul class="nav-dropdown-menu">
+        <li><a href="/#how-it-works">How It Works</a></li>
+        <li><a href="/#why-us">Why <img src="/static/Logo.png" alt="Seva Connect" class="inline-logo"></a></li>
+        <li><a href="/#ngo-network">NGO Network</a></li>
+      </ul>
+    </li>
+
     <li><a href="/driver">Driver</a></li>
     <li><a href="/login" class="btn-nav">Login</a></li>
-    <li><a href="/register" class="btn-nav">Register</a></li>
+    <li><a href="/register" class="btn-nav btn-nav-cta">Register</a></li>
     {% endblock %}
   </ul>
 </nav>
@@ -31,11 +57,132 @@
 </main>
 
 <!-- ── Footer ───────────────────────────────────────────────────────────── -->
-<footer>
-  <p>Seva Connect &copy; 2024 &nbsp;|&nbsp; CSE 408 Software Engineering &nbsp;|&nbsp; Ahmedabad University &nbsp;|&nbsp; Group 4</p>
+<footer class="site-footer">
+  <div class="footer-inner">
+    <div class="footer-brand">
+      <div class="footer-logo-row">
+        <img src="/static/Logo.png" alt="Seva Connect" style="height: 40px;">
+      </div>
+      <p class="footer-tagline">Connecting NGOs, donors, and drivers through one trusted platform.</p>
+    </div>
+
+    <div class="footer-links-group">
+      <h4>Get Involved</h4>
+      <ul>
+        <li><a href="/donor/search">Browse Requirements</a></li>
+        <li><a href="/register?role=DONOR">Donate</a></li>
+        <li><a href="/register?role=NGO">Partner as NGO</a></li>
+        <li><a href="/driver">Driver Portal</a></li>
+      </ul>
+    </div>
+
+    <div class="footer-links-group">
+      <h4>Platform</h4>
+      <ul>
+        <li><a href="/#how-it-works">How It Works</a></li>
+        <li><a href="/#why-us">Why Us</a></li>
+        <li><a href="/#ngo-network">NGO Network</a></li>
+      </ul>
+    </div>
+
+    <div class="footer-links-group">
+      <h4>Account</h4>
+      <ul>
+        <li><a href="/login">Login</a></li>
+        <li><a href="/register">Register</a></li>
+        <li><a href="/notifications">Notifications</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <p><img src="/static/Logo.png" alt="Seva Connect" class="inline-logo"> &copy; 2026 &nbsp;|&nbsp; CSE 408 Software Engineering &nbsp;|&nbsp; Ahmedabad University &nbsp;|&nbsp; Group 4</p>
+  </div>
 </footer>
 
 <script src="/static/api.js"></script>
+<script>
+  // Hamburger menu
+  const hamburger = document.getElementById('nav-hamburger');
+  const navLinks  = document.getElementById('nav-links');
+  hamburger.addEventListener('click', () => {
+    navLinks.classList.toggle('open');
+    hamburger.classList.toggle('open');
+  });
+
+  // Dropdowns
+  document.querySelectorAll('.nav-dropdown-toggle').forEach(toggle => {
+    toggle.addEventListener('click', e => {
+      e.preventDefault();
+      const li = toggle.closest('.nav-dropdown');
+      const isOpen = li.classList.contains('open');
+      document.querySelectorAll('.nav-dropdown.open').forEach(d => d.classList.remove('open'));
+      if (!isOpen) li.classList.add('open');
+    });
+  });
+
+
+  // Close dropdowns on outside click
+  document.addEventListener('click', e => {
+    if (!e.target.closest('.nav-dropdown')) {
+      document.querySelectorAll('.nav-dropdown.open').forEach(d => d.classList.remove('open'));
+    }
+  });
+
+  // ── Navbar Scroll Toggle Logic ────────────────────
+  const navbar = document.querySelector('.navbar');
+  const sections = document.querySelectorAll('section');
+
+  if (sections.length > 0) {
+    const observerOptions = {
+      root: null,
+      rootMargin: '-80px 0px 0px 0px', // When the section hits the bottom of the navbar
+      threshold: 0
+    };
+
+    const sectionObserver = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          const sectionArray = Array.from(sections);
+          const index = sectionArray.indexOf(entry.target);
+          
+          if (index === 0 && window.location.pathname === '/') {
+            navbar.classList.remove('navbar-red');
+          } else {
+            navbar.classList.add('navbar-red');
+          }
+        }
+      });
+    }, observerOptions);
+
+    sections.forEach(section => sectionObserver.observe(section));
+  } else {
+    // If no sections are found (like on single-page forms or dashboards), 
+    // we default to red unless specifically excluded.
+    const path = window.location.pathname;
+    if (path === '/login' || path === '/register' || path.includes('dashboard')) {
+      navbar.classList.add('navbar-red');
+    }
+  }
+
+
+  // ── Universal Password Toggle ───────────────────
+  function togglePasswordVisibility(inputId, iconElement) {
+    const input = document.getElementById(inputId);
+    const isVisible = input.type === 'text';
+    input.type = isVisible ? 'password' : 'text';
+    
+    // Toggle SVG icons if iconElement is provided
+    if (iconElement) {
+      if (isVisible) {
+        // Switch to eye icon
+        iconElement.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>`;
+      } else {
+        // Switch to eye-off icon
+        iconElement.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>`;
+      }
+    }
+  }
+</script>
 {% block scripts %}{% endblock %}
 </body>
 </html>

@@ -2,69 +2,100 @@
 {% block title %}Login{% endblock %}
 
 {% block content %}
-<div class="container" style="max-width:440px;padding-top:4rem;">
-  <div class="card">
-    <div class="text-center" style="margin-bottom:1.5rem;">
-      <div style="font-size:2.5rem;">🙏</div>
-      <h2 style="color:var(--red);margin-top:0.5rem;">Welcome Back</h2>
-      <p style="color:var(--text-muted);font-size:0.9rem;">Login to your Seva Connect account</p>
-    </div>
-
-    <div id="alert-box"></div>
-
-    <!-- ── Email/Password Login Form ───────────────────────────────────────── -->
-    <div id="login-form">
-      <div class="form-group">
-        <label class="form-label">Email Address</label>
-        <input type="email" id="email" class="form-control" placeholder="you@example.com" />
+<div class="auth-shell">
+  <!-- ── Left: Brand Panel ────────────────────────────────────────────────── -->
+  <aside class="auth-brand-panel">
+    <div class="auth-brand-orb auth-orb-1"></div>
+    <div class="auth-brand-orb auth-orb-2"></div>
+    
+    <div class="auth-brand-inner" data-reveal>
+      <div class="auth-brand-logo">
+        <span class="auth-logo-hindi">सेवा</span>
+        <span class="auth-logo-english">Connect</span>
       </div>
-      <div class="form-group">
-        <label class="form-label">Password</label>
-        <input type="password" id="password" class="form-control" placeholder="••••••••" />
+      
+      <h1 class="auth-brand-headline">
+        Welcome back to <br><em>Kindness.</em>
+      </h1>
+      <p class="auth-brand-sub">
+        Continue your journey of making a real-world impact. Log in to manage your donations or requirements.
+      </p>
+      
+      <div class="auth-trust-cards">
+        <div class="auth-trust-card">
+          <span class="auth-trust-icon">🔒</span>
+          <div>
+            <strong>Secure & Verified</strong>
+            <p>Every transaction and NGO is audited for total transparency.</p>
+          </div>
+        </div>
+        <div class="auth-trust-card">
+          <span class="auth-trust-icon">📊</span>
+          <div>
+            <strong>Real-time Tracking</strong>
+            <p>Watch your impact grow with live updates on every contribution.</p>
+          </div>
+        </div>
       </div>
-      <button class="btn btn-primary w-full" onclick="doLogin()">Login</button>
     </div>
+  </aside>
 
-    <!-- ── Divider ──────────────────────────────────────────────────────────── -->
-    <div style="margin:1.5rem 0;text-align:center;">
-      <span style="color:var(--text-muted);font-size:0.85rem;">Or continue with</span>
+  <!-- ── Right: Form Panel ─────────────────────────────────────────────────── -->
+  <main class="auth-form-panel">
+    <div class="auth-form-inner" data-reveal>
+      <div class="auth-form-header">
+        <div class="auth-form-emoji">🙏</div>
+        <h2 class="auth-form-title">Welcome Back</h2>
+        <p class="auth-form-sub">Enter your details to access your account</p>
+      </div>
+
+      <div id="alert-box"></div>
+
+      <!-- Login Form Content -->
+      <div id="login-form">
+        <div class="auth-field-group">
+          <label class="form-label">Email Address</label>
+          <input type="email" id="email" class="form-control auth-input" placeholder="you@example.com" />
+        </div>
+        
+        <div class="auth-field-group">
+          <label class="form-label">Password</label>
+          <div class="password-input-group">
+            <input type="password" id="password" class="form-control auth-input" placeholder="••••••••" />
+            <span class="password-toggle-icon" onclick="togglePasswordVisibility('password', this)" title="Show/Hide Password">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+            </span>
+          </div>
+        </div>
+        
+        <button class="btn btn-primary btn-lg w-full auth-submit-btn" onclick="doLogin()">Login</button>
+      </div>
+
+      <div class="auth-divider">Or continue with</div>
+
+      <div class="auth-field-group">
+        <label class="form-label">Continue as</label>
+        <select id="google-role" class="form-control auth-input">
+          <option value="DONOR">Donor</option>
+          <option value="NGO">NGO</option>
+        </select>
+      </div>
+
+      <button class="btn w-full auth-google-btn" onclick="doGoogleLogin()">
+        <svg width="20" height="20" viewBox="0 0 48 48">
+          <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19c2.05-6.16 8.03-10.91 14.46-10.91z"></path>
+          <path fill="#34A853" d="M24 44.5c6.47 0 11.9-2.38 15.89-6.55l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.05 0-11.25-4.03-13.12-9.45l-8.04 6.07C6.51 39.12 14.62 44.5 24 44.5z"></path>
+          <path fill="#4285F4" d="M43.611 20.236H42V20h-18v8h11.303c-1.649 4.657-6.08 8-11.303 8-6.365 0-11.5-5.134-11.5-11.5S17.635 12.5 24 12.5c2.747 0 5.313.966 7.348 2.554l5.757-5.757C35.92 5.477 30.47 2.5 24 2.5 12.958 2.5 3.965 11.493 3.965 22.5s8.993 20 20.035 20c10.882 0 20-8.478 20-20 0-1.341-.138-2.65-.389-3.964z"></path>
+          <path fill="none" d="M0 0h48v48H0z"></path>
+        </svg>
+        Google
+      </button>
+
+      <div class="auth-footer-link">
+        New to Seva Connect? <a href="/register">Create an account</a>
+      </div>
     </div>
-
-    <!-- Google role picker -->
-    <div class="form-group" style="margin-bottom:0.75rem;">
-      <label class="form-label">Continue as</label>
-      <select id="google-role" class="form-control">
-        <option value="DONOR">Donor</option>
-        <option value="NGO">NGO</option>
-      </select>
-    </div>
-
-    <!-- ── Google Sign-In Button ───────────────────────────────────────────── -->
-    <button 
-      class="btn w-full" 
-      onclick="doGoogleLogin()" 
-      style="
-        background-color:#ffffff;
-        color:#333;
-        border:1px solid #ddd;
-        display:flex;
-        align-items:center;
-        justify-content:center;
-        gap:0.75rem;
-      ">
-      <svg width="20" height="20" viewBox="0 0 48 48">
-        <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19c2.05-6.16 8.03-10.91 14.46-10.91z"></path>
-        <path fill="#34A853" d="M24 44.5c6.47 0 11.9-2.38 15.89-6.55l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.05 0-11.25-4.03-13.12-9.45l-8.04 6.07C6.51 39.12 14.62 44.5 24 44.5z"></path>
-        <path fill="#4285F4" d="M43.611 20.236H42V20h-18v8h11.303c-1.649 4.657-6.08 8-11.303 8-6.365 0-11.5-5.134-11.5-11.5S17.635 12.5 24 12.5c2.747 0 5.313.966 7.348 2.554l5.757-5.757C35.92 5.477 30.47 2.5 24 2.5 12.958 2.5 3.965 11.493 3.965 22.5s8.993 20 20.035 20c10.882 0 20-8.478 20-20 0-1.341-.138-2.65-.389-3.964z"></path>
-        <path fill="none" d="M0 0h48v48H0z"></path>
-      </svg>
-      Google
-    </button>
-
-    <p class="text-center mt-2" style="font-size:0.9rem;">
-      New to Seva Connect? <a href="/register" style="color:var(--red);font-weight:600;">Register here</a>
-    </p>
-  </div>
+  </main>
 </div>
 {% endblock %}
 
@@ -84,7 +115,8 @@ async function doLogin() {
     return;
   }
 
-  const btn = document.querySelector('#login-form button');
+  const btn = document.querySelector('.auth-submit-btn');
+  const originalText = btn.textContent;
   btn.disabled = true;
   btn.textContent = 'Logging in…';
 
@@ -93,7 +125,7 @@ async function doLogin() {
   if (data.error) {
     showAlert('alert-box', data.error, 'error');
     btn.disabled = false;
-    btn.textContent = 'Login';
+    btn.textContent = originalText;
     return;
   }
 
@@ -107,33 +139,55 @@ async function doLogin() {
 
 async function doGoogleLogin() {
   clearAlert('alert-box');
-  const btn = event.target;
+  const btn = event.currentTarget || event.target.closest('button');
+  const originalText = btn.innerHTML;
   btn.disabled = true;
   btn.textContent = 'Redirecting to Google…';
 
   try {
     const role = document.getElementById('google-role').value || 'DONOR';
-    // Step 1: Get authorization URL from backend
     const initResponse = await apiPost('/auth/google/init', { role });
     if (initResponse.error) {
       showAlert('alert-box', `Google OAuth error: ${initResponse.error}`, 'error');
       btn.disabled = false;
-      btn.textContent = 'Google';
+      btn.innerHTML = originalText;
       return;
     }
-
-    // Step 2: Redirect user to Google's authorization URL
-    const authUrl = initResponse.auth_url;
-    window.location.href = authUrl;
+    window.location.href = initResponse.auth_url;
   } catch (err) {
     console.error('Google login error:', err);
     showAlert('alert-box', 'Failed to initiate Google login. Please try again.', 'error');
     btn.disabled = false;
-    btn.textContent = 'Google';
+    btn.innerHTML = originalText;
   }
 }
 
 // Allow Enter key
 document.addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+
+// Reveal animations
+document.addEventListener('DOMContentLoaded', () => {
+    initRevealAnimations();
+});
+
+function initRevealAnimations() {
+  const items = document.querySelectorAll('[data-reveal]');
+  if (!('IntersectionObserver' in window)) {
+    items.forEach(item => item.classList.add('revealed'));
+    return;
+  }
+
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('revealed');
+        observer.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.1 });
+
+  items.forEach(item => observer.observe(item));
+}
 </script>
 {% endblock %}
+

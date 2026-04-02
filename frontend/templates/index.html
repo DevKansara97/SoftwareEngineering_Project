@@ -2,58 +2,38 @@
 {% block title %}Home{% endblock %}
 
 {% block content %}
-<section class="home-hero">
-  <div class="container home-hero-grid">
-    <div class="home-hero-copy" data-reveal>
-      <span class="eyebrow">Resource Matching For Real-World Impact</span>
-      <h1>Connect NGOs, donors, and delivery partners through one trusted flow.</h1>
-      <p class="hero-lead">
-        Seva Connect helps NGOs publish urgent needs, donors respond faster, and third-party drivers complete the last-mile journey with live accountability.
-      </p>
-      <div class="hero-btns hero-btns-left">
-        <a href="/register" class="btn btn-primary btn-lg">Get Started</a>
-        <a href="/donor/search" class="btn btn-outline btn-lg">Browse Requirements</a>
-      </div>
-      <div class="hero-stat-row">
-        <div class="hero-stat-card">
-          <strong id="s-ngos">0</strong>
-          <span>NGOs onboarded</span>
-        </div>
-        <div class="hero-stat-card">
-          <strong id="s-req">0</strong>
-          <span>Active requirements</span>
-        </div>
-        <div class="hero-stat-card">
-          <strong id="s-cities">0</strong>
-          <span>Cities represented</span>
-        </div>
-      </div>
-    </div>
 
-    <div class="home-hero-visual" data-reveal>
-      <div class="visual-orb orb-one"></div>
-      <div class="visual-orb orb-two"></div>
-      <div class="hero-photo-stack">
-        <article class="hero-photo-card hero-photo-large">
-          <div class="hero-photo-art art-1"></div>
-          <div class="hero-photo-body">
-            <span class="eyebrow">NGO Spotlight</span>
-            <strong>Urgent requests stay visible and organized.</strong>
-            <p>Post clear requirements and let the platform handle discovery, dispatch, and tracking.</p>
-          </div>
-        </article>
-        <article class="hero-photo-card hero-photo-small">
-          <div class="hero-photo-art art-2"></div>
-          <div class="hero-photo-body">
-            <strong>Driver-ready delivery flow</strong>
-            <p>Third-party drivers now work from their own dashboard instead of a mock order prompt.</p>
-          </div>
-        </article>
-      </div>
+<!-- ── HERO BANNER ──────────────────────────────────────────────────────── -->
+<section class="hero-banner">
+  <div class="hero-banner-overlay"></div>
+  <div class="hero-banner-content" data-reveal>
+    <span class="eyebrow">Resource Matching For Real-World Impact</span>
+    <h1>Let's Spread<br><em>Kindness</em></h1>
+    <p class="hero-banner-sub">
+      <img src="/static/Logo.png" alt="Seva Connect" class="inline-logo"> delivers your donations to verified NGOs — through one trusted, trackable flow.
+    </p>
+    <div class="hero-banner-btns">
+      <a href="/donor/search" class="btn btn-hero-primary btn-lg">Browse Requirements ↗</a>
+      <a href="/register" class="btn btn-hero-outline btn-lg">Get Started</a>
+    </div>
+  </div>
+  <div class="hero-banner-stats">
+    <div class="hero-banner-stat">
+      <strong id="s-ngos">0</strong>
+      <span>NGOs Onboarded</span>
+    </div>
+    <div class="hero-banner-stat">
+      <strong id="s-req">0</strong>
+      <span>Active Requirements</span>
+    </div>
+    <div class="hero-banner-stat">
+      <strong id="s-cities">0</strong>
+      <span>Cities Represented</span>
     </div>
   </div>
 </section>
 
+<!-- ── MARQUEE ──────────────────────────────────────────────────────────── -->
 <section class="impact-marquee-wrap">
   <div class="impact-marquee">
     <div class="impact-marquee-track">
@@ -73,43 +53,192 @@
   </div>
 </section>
 
-<section class="container mission-section">
-  <div class="section-heading" data-reveal>
-    <span class="eyebrow">Built Around Accountability</span>
-    <h2 class="section-title">One system for need discovery, donation confirmation, and live delivery.</h2>
-    <p class="section-sub">The platform now reflects the full operational chain instead of isolated prototype pages.</p>
-  </div>
+<!-- ── HOW IT WORKS ─────────────────────────────────────────────────────── -->
+<section class="hiw-section" id="how-it-works">
+  <div class="container">
+    <div class="section-heading text-center" data-reveal>
+      <span class="eyebrow eyebrow-center">How We Work</span>
+      <h2 class="section-title">Three steps from need to delivery</h2>
+      <p class="section-sub">A clear, accountable chain — no guesswork, no gaps.</p>
+    </div>
 
-  <div class="mission-grid">
-    <article class="mission-card" data-reveal>
-      <div class="mission-icon">01</div>
-      <h3>NGOs publish structured requirements</h3>
-      <p>Requirements stay tied to the correct NGO, protected by session-based ownership checks and cleaner validation rules.</p>
-    </article>
-    <article class="mission-card" data-reveal>
-      <div class="mission-icon">02</div>
-      <h3>Donors commit without overlap</h3>
-      <p>Active donations now prevent duplicate in-flight fulfilment, which keeps quantities and statuses logically consistent.</p>
-    </article>
-    <article class="mission-card" data-reveal>
-      <div class="mission-icon">03</div>
-      <h3>Drivers handle execution</h3>
-      <p>The driver dashboard owns status changes and GPS updates, so delivery state is controlled where the action actually happens.</p>
-    </article>
+    <div class="hiw-grid">
+      <article class="hiw-card" data-reveal>
+        <div class="hiw-icon-wrap hiw-icon-1">
+          <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" width="36" height="36">
+            <rect x="6" y="4" width="28" height="32" rx="4" stroke="currentColor" stroke-width="2"/>
+            <path d="M13 14h14M13 20h10M13 26h8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <h3>NGOs publish requirements</h3>
+        <p>Verified NGOs post structured, specific needs — quantities, categories, deadlines — so donors know exactly what's needed.</p>
+      </article>
+
+      <div class="hiw-arrow" aria-hidden="true">→</div>
+
+      <article class="hiw-card" data-reveal>
+        <div class="hiw-icon-wrap hiw-icon-2">
+          <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" width="36" height="36">
+            <path d="M20 6C13.37 6 8 11.37 8 18c0 9 12 20 12 20s12-11 12-20c0-6.63-5.37-12-12-12z" stroke="currentColor" stroke-width="2"/>
+            <circle cx="20" cy="18" r="4" stroke="currentColor" stroke-width="2"/>
+          </svg>
+        </div>
+        <h3>Donate at your doorstep</h3>
+        <p>Donors browse open requirements and commit. A third-party driver is dispatched to collect and deliver with live GPS tracking.</p>
+      </article>
+
+      <div class="hiw-arrow" aria-hidden="true">→</div>
+
+      <article class="hiw-card" data-reveal>
+        <div class="hiw-icon-wrap hiw-icon-3">
+          <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" width="36" height="36">
+            <path d="M8 22l6 6 18-16" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+            <circle cx="20" cy="20" r="14" stroke="currentColor" stroke-width="2"/>
+          </svg>
+        </div>
+        <h3>Verified delivery & accountability</h3>
+        <p>Status updates at every step. Donors, NGOs, and drivers all see the same live picture — no broken telephone.</p>
+      </article>
+    </div>
   </div>
 </section>
 
-<section class="container showcase-section">
+<!-- ── DONATE CATEGORIES ────────────────────────────────────────────────── -->
+<section class="categories-section">
+  <div class="container">
+    <div class="section-heading text-center" data-reveal>
+      <span class="eyebrow eyebrow-center">Donate Almost Anything</span>
+      <h2 class="section-title">Every category, every need</h2>
+    </div>
+
+    <div class="categories-grid" data-reveal>
+      <div class="category-tile">
+        <div class="category-icon">
+          <svg viewBox="0 0 24 24"><path d="M18 8h1a4 4 0 0 1 0 8h-1"></path><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path><line x1="6" y1="1" x2="6" y2="4"></line><line x1="10" y1="1" x2="10" y2="4"></line><line x1="14" y1="1" x2="14" y2="4"></line></svg>
+        </div>
+        <span>Food &amp; Kits</span>
+      </div>
+      <div class="category-tile">
+        <div class="category-icon">
+          <svg viewBox="0 0 24 24"><path d="M20.38 3.46L16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.62 1.96V20a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V5.42a2 2 0 0 0-1.62-1.96z"></path><path d="M12 22V10"></path></svg>
+        </div>
+        <span>Clothing</span>
+      </div>
+      <div class="category-tile">
+        <div class="category-icon">
+          <svg viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>
+        </div>
+        <span>Medical</span>
+      </div>
+      <div class="category-tile">
+        <div class="category-icon">
+          <svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+        </div>
+        <span>Education</span>
+      </div>
+      <div class="category-tile">
+        <div class="category-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><rect x="5" y="5" width="6" height="4" rx="1"></rect><rect x="13" y="5" width="6" height="4" rx="1"></rect><line x1="3" y1="11" x2="21" y2="11"></line></svg>
+        </div>
+        <span>Blankets</span>
+      </div>
+      <div class="category-tile">
+        <div class="category-icon">
+          <svg viewBox="0 0 24 24"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"></path></svg>
+        </div>
+        <span>Hygiene</span>
+      </div>
+      <div class="category-tile">
+        <div class="category-icon">
+          <svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path></svg>
+        </div>
+        <span>Toys</span>
+      </div>
+      <div class="category-tile">
+        <div class="category-icon">
+          <svg viewBox="0 0 24 24"><path d="M22 19V9a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v10M2 11h20M2 19h20M18 7v2M6 7v2M12 7V9"></path><path d="M7 11V8a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v3"></path></svg>
+        </div>
+        <span>Furniture</span>
+      </div>
+      <a href="/donor/search" class="category-tile category-tile-more">
+        <div class="category-icon">
+          <svg viewBox="0 0 24 24" stroke="currentColor" fill="none"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+        </div>
+        <span>&amp; more</span>
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- ── WHY SEVA CONNECT ──────────────────────────────────────────────────── -->
+<section class="why-section" id="why-us">
+  <div class="container">
+    <div class="section-heading text-center" data-reveal>
+      <span class="eyebrow eyebrow-center">Why Donate Through <img src="/static/Logo.png" alt="Seva Connect" class="inline-logo"></span>
+      <h2 class="section-title">Built around accountability</h2>
+      <p class="section-sub">Every feature exists to ensure your donation reaches the right place, in the right condition, on time.</p>
+    </div>
+
+    <div class="why-grid">
+      <article class="why-card" data-reveal>
+        <div class="why-card-icon">
+          <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><path d="M9 12l2 2 4-4"></path></svg>
+        </div>
+        <h4>Verified NGOs</h4>
+        <p>Every NGO on the platform is registered and audited. No unverified recipients.</p>
+      </article>
+      <article class="why-card" data-reveal>
+        <div class="why-card-icon">
+          <svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 1 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+        </div>
+        <h4>Live GPS Tracking</h4>
+        <p>Watch your donation move from pickup to delivery in real time.</p>
+      </article>
+      <article class="why-card" data-reveal>
+        <div class="why-card-icon">
+          <svg viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>
+        </div>
+        <h4>Transparent Process</h4>
+        <p>Donors, NGOs and drivers share one source of truth — no middlemen, no black boxes.</p>
+      </article>
+      <article class="why-card" data-reveal>
+        <div class="why-card-icon">
+          <svg viewBox="0 0 24 24"><path d="M1 3h15v13H1zM16 8l4 4v5h-4"></path><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="15.5" cy="18.5" r="2.5"></circle></svg>
+        </div>
+        <h4>Last-Mile Delivery</h4>
+        <p>Dedicated driver partners complete the final leg — so your donation never stalls.</p>
+      </article>
+      <article class="why-card" data-reveal>
+        <div class="why-card-icon">
+          <svg viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+        </div>
+        <h4>Fast Matching</h4>
+        <p>Requirements get matched to donors within hours, not days. Urgent needs stay visible.</p>
+      </article>
+      <article class="why-card" data-reveal>
+        <div class="why-card-icon">
+          <svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+        </div>
+        <h4>Feel-Good Factor</h4>
+        <p>Giving is rewarding. <img src="/static/Logo.png" alt="Seva Connect" class="inline-logo"> makes the impact of your donation visible and real.</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ── NGO NETWORK ──────────────────────────────────────────────────────── -->
+<section class="container showcase-section" id="ngo-network">
   <div class="section-heading" data-reveal>
     <span class="eyebrow">NGO Network</span>
-    <h2 class="section-title">Featured organizations on the platform</h2>
-    <p class="section-sub">A live snapshot of NGOs currently represented in Seva Connect.</p>
+    <h2 class="section-title">Recently added organisations</h2>
+    <p class="section-sub">A live snapshot of NGOs currently represented in <img src="/static/Logo.png" alt="Seva Connect" class="inline-logo">.</p>
   </div>
   <div class="ngo-spotlight-grid" id="ngo-spotlight-grid">
     <div class="loading-center"><div class="spinner"></div></div>
   </div>
 </section>
 
+<!-- ── OPEN REQUIREMENTS ─────────────────────────────────────────────────── -->
 <section class="container recent-section">
   <div class="section-heading" data-reveal>
     <span class="eyebrow">Open Requirements</span>
@@ -124,17 +253,19 @@
   </div>
 </section>
 
+<!-- ── CTA BAND ─────────────────────────────────────────────────────────── -->
 <section class="container cta-band" data-reveal>
   <div>
     <span class="eyebrow">Join The Flow</span>
-    <h2>NGO, donor, or delivery partner, each role now has a clearer path.</h2>
+    <h2>NGO, donor, or delivery partner — each role has a clear path.</h2>
   </div>
   <div class="cta-band-actions">
-    <a href="/register?role=NGO" class="btn btn-secondary">Register NGO</a>
+    <a href="/register?role=NGO"   class="btn btn-secondary">Register NGO</a>
     <a href="/register?role=DONOR" class="btn btn-outline">Register Donor</a>
-    <a href="/driver" class="btn btn-primary">Open Driver Portal</a>
+    <a href="/driver"              class="btn btn-primary">Open Driver Portal</a>
   </div>
 </section>
+
 {% endblock %}
 
 {% block scripts %}
@@ -157,9 +288,21 @@ async function loadStats() {
   const reqList = Array.isArray(reqs) ? reqs : [];
   const cities = new Set(ngoList.map(ngo => (ngo.city || '').trim()).filter(Boolean));
 
-  document.getElementById('s-ngos').textContent = ngoList.length;
-  document.getElementById('s-req').textContent = reqList.length;
-  document.getElementById('s-cities').textContent = cities.size;
+  animateCount('s-ngos', ngoList.length);
+  animateCount('s-req', reqList.length);
+  animateCount('s-cities', cities.size);
+}
+
+function animateCount(id, target) {
+  const el = document.getElementById(id);
+  if (!el || target === 0) { if (el) el.textContent = '0'; return; }
+  let current = 0;
+  const step = Math.ceil(target / 40);
+  const interval = setInterval(() => {
+    current = Math.min(current + step, target);
+    el.textContent = current;
+    if (current >= target) clearInterval(interval);
+  }, 30);
 }
 
 async function loadSpotlights() {
@@ -187,7 +330,7 @@ async function loadSpotlights() {
         </div>
         <div class="ngo-spotlight-body">
           <h3>${ngo.organization_name || ngo.name}</h3>
-          <p>${ngo.description || 'Working through Seva Connect to publish verified needs and receive structured donor support.'}</p>
+          <p>${ngo.description || 'Working through <img src="/static/Logo.png" alt="Seva Connect" class="inline-logo"> to publish verified needs and receive structured donor support.'}</p>
           <div class="ngo-spotlight-meta">
             <span>${ngo.city || 'City pending'}</span>
             <span>${ngo.state || 'State pending'}</span>
@@ -228,6 +371,20 @@ async function loadRecent() {
   `).join('');
 }
 
+function badgeClass(status) {
+  const map = {
+    'open': 'badge-open',
+    'partially_fulfilled': 'badge-partially-fulfilled',
+    'fulfilled': 'badge-fulfilled',
+    'initiated': 'badge-initiated',
+    'confirmed': 'badge-confirmed',
+    'in_progress': 'badge-in-progress',
+    'completed': 'badge-completed',
+    'cancelled': 'badge-cancelled',
+  };
+  return map[status] || 'badge-open';
+}
+
 function initRevealAnimations() {
   const items = document.querySelectorAll('[data-reveal]');
   if (!('IntersectionObserver' in window)) {
@@ -242,7 +399,7 @@ function initRevealAnimations() {
         observer.unobserve(entry.target);
       }
     });
-  }, { threshold: 0.15 });
+  }, { threshold: 0.12 });
 
   items.forEach(item => observer.observe(item));
 }

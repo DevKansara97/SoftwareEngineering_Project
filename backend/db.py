@@ -9,10 +9,10 @@ import oracledb
 
 
 DB_CONFIG = {
-    "user": os.getenv("DB_USER", "SYS"),
-    "password": os.getenv("DB_PASSWORD", "$DRKansara97"),
-    "dsn": os.getenv("DB_DSN", "localhost:1521/XE"),
-    "mode": oracledb.SYSDBA,
+    "user": os.getenv("DB_USER", "project_user"),
+    "password": os.getenv("DB_PASSWORD", "project1234"),
+    "dsn": os.getenv("DB_DSN", "localhost:1521/XEPDB1"),
+    # "mode": oracledb.SYSDBA,
 }
 
 
