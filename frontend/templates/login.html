@@ -31,10 +31,20 @@
           </div>
         </div>
         
-        <button class="btn btn-primary btn-lg w-full auth-submit-btn" onclick="doLogin()">Login</button>
+        <button class="btn btn-primary btn-lg w-full auth-submit-btn" id="login-btn" onclick="doLogin()">Login</button>
       </div>
 
-      <div class="auth-divider">Or continue with</div>
+      <!-- OTP Form Content (Hidden by Default) -->
+      <div id="otp-form" style="display: none;">
+        <div class="auth-field-group">
+          <label class="form-label">OTP Code</label>
+          <input type="text" id="otp" class="form-control auth-input" placeholder="Enter 6-digit OTP" />
+          <div id="otp-timer" class="otp-timer-text">Expires in: <span id="timer-seconds">120</span>s</div>
+        </div>
+        <button class="btn btn-primary btn-lg w-full auth-submit-btn" id="otp-btn" onclick="doVerifyOtp()">Verify OTP</button>
+      </div>
+
+      <div class="auth-divider" id="auth-divider">Or continue with</div>
 
       <div class="auth-field-group">
         <label class="form-label">Continue as</label>
@@ -78,17 +88,67 @@ async function doLogin() {
     return;
   }
 
-  const btn = document.querySelector('.auth-submit-btn');
+  const btn = document.getElementById('login-btn');
   const originalText = btn.textContent;
   btn.disabled = true;
   btn.textContent = 'Logging in…';
 
   const data = await apiPost('/auth/login', { email, password });
 
+  btn.disabled = false;
+  btn.textContent = originalText;
+
   if (data.error) {
     showAlert('alert-box', data.error, 'error');
-    btn.disabled = false;
-    btn.textContent = originalText;
+    return;
+  }
+
+  if (data['2fa_required']) {
+    document.getElementById('login-form').style.display = 'none';
+    document.getElementById('otp-form').style.display = 'block';
+    
+    // Hide google login and divider while doing OTP
+    const divider = document.getElementById('auth-divider');
+    const googleBtn = document.querySelector('.auth-google-btn');
+    const googleRole = document.getElementById('google-role').parentElement;
+    if(divider) divider.style.display = 'none';
+    if(googleBtn) googleBtn.style.display = 'none';
+    if(googleRole) googleRole.style.display = 'none';
+    
+    showAlert('alert-box', data.message, 'info');
+    startOtpTimer(data.expires_in_seconds || 120);
+    return;
+  }
+
+  clearDriver();
+  setUser(data);
+  showAlert('alert-box', 'Login successful! Redirecting…', 'success');
+  setTimeout(() => {
+    window.location.href = data.role === 'NGO' ? '/ngo/dashboard' : '/donor/dashboard';
+  }, 800);
+}
+
+async function doVerifyOtp() {
+  clearAlert('alert-box');
+  const otp = document.getElementById('otp').value.trim();
+
+  if (!otp) {
+    showAlert('alert-box', 'Please enter the OTP.', 'error');
+    return;
+  }
+
+  const btn = document.getElementById('otp-btn');
+  const originalText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Verifying…';
+
+  const data = await apiPost('/auth/verify-otp', { otp });
+
+  btn.disabled = false;
+  btn.textContent = originalText;
+
+  if (data.error) {
+    showAlert('alert-box', data.error, 'error');
     return;
   }
 
@@ -123,6 +183,35 @@ async function doGoogleLogin() {
     btn.disabled = false;
     btn.innerHTML = originalText;
   }
+}
+
+let otpTimerInterval = null;
+function startOtpTimer(seconds) {
+  const timerEl = document.getElementById('timer-seconds');
+  const timerContainer = document.getElementById('otp-timer');
+  if (!timerEl || !timerContainer) return;
+
+  clearInterval(otpTimerInterval);
+  let remaining = seconds;
+  timerEl.textContent = remaining;
+  timerContainer.style.color = '';
+
+  otpTimerInterval = setInterval(() => {
+    remaining--;
+    timerEl.textContent = remaining;
+
+    if (remaining <= 30) {
+      timerContainer.style.color = '#ef4444'; // Red alert
+    }
+
+    if (remaining <= 0) {
+      clearInterval(otpTimerInterval);
+      showAlert('alert-box', 'OTP expired. Please login again.', 'error');
+      setTimeout(() => {
+        window.location.reload();
+      }, 2000);
+    }
+  }, 1000);
 }
 
 // Allow Enter key

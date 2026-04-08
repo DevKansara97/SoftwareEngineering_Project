@@ -4,16 +4,25 @@ Uses oracledb with SYS/SYSDBA (matching your working config)
 """
 
 import os
+import sys
 
 import oracledb
 
 
 DB_CONFIG = {
-    "user": os.getenv("DB_USER", "project_user"),
-    "password": os.getenv("DB_PASSWORD", "project1234"),
-    "dsn": os.getenv("DB_DSN", "localhost:1521/XEPDB1"),
+    "user": os.getenv("DB_USER", ""),
+    "password": os.getenv("DB_PASSWORD", ""),
+    "dsn": os.getenv("DB_DSN", "localhost:1521/XE"),
     # "mode": oracledb.SYSDBA,
 }
+
+# Fail fast if DB credentials are missing
+if not DB_CONFIG["user"] or not DB_CONFIG["password"]:
+    print("=" * 60)
+    print("  ERROR: DB_USER and DB_PASSWORD not set!")
+    print("  Copy .env.example → .env and fill in your credentials.")
+    print("=" * 60)
+    sys.exit(1)
 
 
 def get_connection():
@@ -249,6 +258,18 @@ def init_db():
             created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             CONSTRAINT fk_notif_user FOREIGN KEY (user_id)
                 REFERENCES users(user_id)
+        )
+        """,
+    )
+
+    _create_table(
+        cur,
+        """
+        CREATE TABLE login_otp (
+            email      VARCHAR2(255) PRIMARY KEY,
+            otp_code   VARCHAR2(6)   NOT NULL,
+            expires_at TIMESTAMP     NOT NULL,
+            attempts   NUMBER(1)     DEFAULT 0
         )
         """,
     )

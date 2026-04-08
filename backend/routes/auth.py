@@ -7,6 +7,10 @@ import hashlib
 import os
 import re
 import secrets
+import smtplib
+import random
+from datetime import datetime, timedelta
+from email.message import EmailMessage
 
 import requests
 from flask import Blueprint, jsonify, request, session
@@ -50,6 +54,143 @@ def validate_phone(phone: str) -> bool:
 
 def validate_pincode(pin: str) -> bool:
     return bool(re.match(r"^\d{6}$", pin))
+
+
+def send_otp_email(receiver_email: str, otp: str):
+    """Sends OTP via SMTP and logs to console for debugging."""
+    # Load from environment or use placeholders
+    sender_email = os.getenv("SMTP_USER", "Bansari1101@gmail.com")
+    password = os.getenv("SMTP_PASS", "your-app-password")
+    smtp_server = os.getenv("SMTP_SERVER", "smtp.gmail.com")
+    smtp_port = int(os.getenv("SMTP_PORT", 587))
+
+    # ALWAYS log to console - this is the "fix" for local development
+    print("\n" + "="*50)
+    print(f"  [OTP DEBUG]")
+    print(f"  Recipient : {receiver_email}")
+    print(f"  OTP Code  : {otp}")
+    print(f"  Sender    : {sender_email}")
+    print("="*50 + "\n")
+
+    # If password is still the placeholder, don't attempt real SMTP
+    if not password or password == "your-app-password":
+        print("!!! SMTP_PASS not configured in .env. Real email will NOT be sent.")
+        print("!!! Please check your .env file or use the [OTP DEBUG] code above.")
+        return
+
+    # Plain-text fallback
+    plain_text = (
+        f"Your Seva Connect Verification Code\n"
+        f"{'='*40}\n\n"
+        f"Your one-time password (OTP) is: {otp}\n\n"
+        f"This code is valid for 2 minutes. Do not share it with anyone.\n"
+        f"If you did not request this code, please ignore this email.\n\n"
+        f"— Team Seva Connect"
+    )
+
+    # Professional HTML email
+    html_body = f"""\
+    <html>
+    <body style="margin:0; padding:0; background-color:#f4f6f9; font-family: 'Segoe UI', Arial, sans-serif;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f6f9; padding:40px 0;">
+        <tr>
+          <td align="center">
+            <table role="presentation" width="480" cellpadding="0" cellspacing="0"
+                   style="background:#ffffff; border-radius:12px; box-shadow:0 2px 12px rgba(0,0,0,0.08); overflow:hidden;">
+
+              <!-- Header -->
+              <tr>
+                <td style="background: linear-gradient(135deg, #6366f1, #8b5cf6); padding:32px 40px; text-align:center;">
+                  <h1 style="margin:0; color:#ffffff; font-size:24px; font-weight:700; letter-spacing:0.5px;">
+                    🙏 Seva Connect
+                  </h1>
+                  <p style="margin:6px 0 0; color:rgba(255,255,255,0.85); font-size:13px;">
+                    Secure Login Verification
+                  </p>
+                </td>
+              </tr>
+
+              <!-- Body -->
+              <tr>
+                <td style="padding:36px 40px 20px;">
+                  <p style="margin:0 0 8px; color:#1e293b; font-size:16px; font-weight:600;">
+                    Hello,
+                  </p>
+                  <p style="margin:0 0 24px; color:#475569; font-size:14px; line-height:1.6;">
+                    We received a login request for your Seva Connect account. Use the verification code below to complete your sign-in:
+                  </p>
+
+                  <!-- OTP Code Block -->
+                  <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                    <tr>
+                      <td align="center" style="padding:8px 0 28px;">
+                        <div style="display:inline-block; background:#f0f0ff; border:2px dashed #6366f1; border-radius:10px; padding:18px 48px;">
+                          <span style="font-size:36px; font-weight:800; letter-spacing:12px; color:#4f46e5; font-family:'Courier New',monospace;">
+                            {otp}
+                          </span>
+                        </div>
+                      </td>
+                    </tr>
+                  </table>
+
+                  <p style="margin:0 0 20px; color:#64748b; font-size:13px; text-align:center;">
+                    ⏱️ This code expires in <strong style="color:#ef4444;">2 minutes</strong>
+                  </p>
+                </td>
+              </tr>
+
+              <!-- Security Note -->
+              <tr>
+                <td style="padding:0 40px 32px;">
+                  <table role="presentation" width="100%" style="background:#fef9ee; border-left:4px solid #f59e0b; border-radius:6px; padding:14px 18px;">
+                    <tr>
+                      <td>
+                        <p style="margin:0; color:#92400e; font-size:12px; line-height:1.5;">
+                          🔒 <strong>Security Tip:</strong> Never share this code with anyone. Seva Connect will never ask you for your OTP via phone or message.
+                        </p>
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+
+              <!-- Footer -->
+              <tr>
+                <td style="background:#f8fafc; padding:20px 40px; text-align:center; border-top:1px solid #e2e8f0;">
+                  <p style="margin:0 0 4px; color:#94a3b8; font-size:11px;">
+                    This is an automated message from Seva Connect.
+                  </p>
+                  <p style="margin:0; color:#94a3b8; font-size:11px;">
+                    If you didn't request this code, you can safely ignore this email.
+                  </p>
+                </td>
+              </tr>
+
+            </table>
+          </td>
+        </tr>
+      </table>
+    </body>
+    </html>
+    """
+
+    msg = EmailMessage()
+    msg["Subject"] = "Your Seva Connect Verification Code"
+    msg["From"] = f"Seva Connect <{sender_email}>"
+    msg["To"] = receiver_email
+    msg.set_content(plain_text)
+    msg.add_alternative(html_body, subtype="html")
+
+    try:
+        # Use a timeout to prevent hanging the request
+        with smtplib.SMTP(smtp_server, smtp_port, timeout=10) as server:
+            server.set_debuglevel(1)  # Enable verbose SMTP logging in console
+            server.starttls()
+            server.login(sender_email, password)
+            server.send_message(msg)
+            print(f"Successfully sent OTP email to {receiver_email}")
+    except Exception as e:
+        print(f"ERROR: Failed to send email to {receiver_email}: {e}")
 
 
 def _phone_in_use(cur, phone: str, exclude_user_id=None) -> bool:
@@ -299,7 +440,7 @@ def login():
     try:
         cur.execute(
             """
-            SELECT user_id, name, role
+            SELECT user_id, name, role, email
             FROM users
             WHERE email = :1 AND password = :2
             """,
@@ -309,19 +450,98 @@ def login():
         if not row:
             return jsonify({"error": "Invalid credentials."}), 401
 
-        session.pop("driver_id", None)
-        session.pop("driver_name", None)
-        session.pop("driver_phone", None)
-        session["user_id"] = row[0]
-        session["role"] = row[2]
-        session["name"] = row[1]
+        # Use canonical email from DB
+        db_email = row[3]
+
+        # Generate 6-digit OTP
+        otp = f"{random.randint(100000, 999999)}"
+        expiry = datetime.now() + timedelta(minutes=2)
+
+        # Store in DB
+        cur.execute("DELETE FROM login_otp WHERE email = :1", (db_email,))
+        cur.execute(
+            "INSERT INTO login_otp (email, otp_code, expires_at) VALUES (:1, :2, :3)",
+            (db_email, otp, expiry),
+        )
+        conn.commit()
+
+        # Send Email
+        send_otp_email(db_email, otp)
+
+        # Pending session
+        session["pending_email"] = db_email
 
         return jsonify(
             {
+                "2fa_required": True,
+                "email_sent_to": db_email,
+                "expires_in_seconds": 120,
+                "message": f"Step 2: A 6-digit code has been sent to {db_email}. Valid for 2 minutes.",
+            }
+        ), 200
+    finally:
+        cur.close()
+        conn.close()
+
+
+@auth_bp.route("/verify-otp", methods=["POST"])
+def verify_otp():
+    data = request.get_json() or {}
+    otp = data.get("otp", "").strip()
+    email = session.get("pending_email")
+
+    if not email:
+        return jsonify({"error": "Session expired. Please login again."}), 401
+    if not otp:
+        return jsonify({"error": "OTP is required."}), 400
+
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            "SELECT otp_code, expires_at, attempts FROM login_otp WHERE email = :1",
+            (email,),
+        )
+        row = cur.fetchone()
+        if not row:
+            return jsonify({"error": "No OTP found for this email."}), 400
+
+        db_otp, expires_at, attempts = row
+        if datetime.now() > expires_at:
+            return jsonify({"error": "OTP expired."}), 401
+
+        if attempts >= 3:
+            return jsonify({"error": "Maximum attempts reached. Please login again."}), 401
+
+        if db_otp != otp:
+            cur.execute(
+                "UPDATE login_otp SET attempts = attempts + 1 WHERE email = :1", (email,)
+            )
+            conn.commit()
+            return jsonify({"error": f"Invalid OTP. {2 - attempts} attempts left."}), 401
+
+        # OTP is correct! Fetch user and log in
+        cur.execute("SELECT user_id, name, role FROM users WHERE email = :1", (email,))
+        user_row = cur.fetchone()
+
+        session.pop("driver_id", None)
+        session.pop("driver_name", None)
+        session.pop("driver_phone", None)
+        session["user_id"] = user_row[0]
+        session["role"] = user_row[2]
+        session["name"] = user_row[1]
+        session.pop("pending_email", None)
+
+        # Cleanup OTP
+        cur.execute("DELETE FROM login_otp WHERE email = :1", (email,))
+        conn.commit()
+
+        return jsonify(
+            {
+                "user_id": user_row[0],
+                "name": user_row[1],
+                "role": user_row[2],
                 "message": "Login successful!",
-                "user_id": row[0],
-                "name": row[1],
-                "role": row[2],
             }
         ), 200
     finally:

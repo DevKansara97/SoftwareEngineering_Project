@@ -90,18 +90,25 @@ function setNavUser() {
   if (nameEl && u) nameEl.textContent = u.name;
   if (nameEl && !u && d) nameEl.textContent = d.name;
 
-  // load unread notification count
-  if (u) {
-    apiGet('/notifications/unread-count', { user_id: u.user_id })
-      .then(d => {
-        const badge = document.getElementById('notif-badge');
-        if (badge) {
-          badge.textContent = d.unread_count || '';
-          badge.style.display = d.unread_count ? 'inline' : 'none';
-        }
-      }).catch(() => {});
-  }
+  refreshNotifBadge();
 }
+
+function refreshNotifBadge() {
+  const u = getUser();
+  if (!u) return;
+  apiGet('/notifications/unread-count', { user_id: u.user_id })
+    .then(d => {
+      const badge = document.getElementById('notif-badge');
+      if (badge) {
+        const count = d.unread_count || 0;
+        badge.textContent = count || '';
+        if (count > 0) badge.classList.remove('hidden');
+        else badge.classList.add('hidden');
+      }
+    }).catch(() => {});
+}
+
+window.refreshNotifBadge = refreshNotifBadge;
 
 function badgeClass(status) {
   const map = {

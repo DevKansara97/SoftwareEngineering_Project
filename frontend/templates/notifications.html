@@ -2,6 +2,15 @@
 {% block title %}Notifications{% endblock %}
 
 {% block nav_links %}
+<li id="nav-dash" class="hidden"><a href="#">Dashboard</a></li>
+<li id="nav-reqs" class="hidden"><a href="/ngo/requirements">My Requirements</a></li>
+<li id="nav-browse" class="hidden"><a href="/donor/search">Browse Requirements</a></li>
+<li>
+  <a href="/notifications" class="nav-notif-link">
+    <svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+    <span id="notif-badge" class="notif-badge hidden"></span>
+  </a>
+</li>
 <li><a id="nav-user-name" href="#">…</a></li>
 <li><a href="#" class="btn-nav" onclick="logout()">Logout</a></li>
 {% endblock %}
@@ -30,6 +39,17 @@ document.addEventListener('DOMContentLoaded', async () => {
   user = requireAuth();
   if (!user) return;
 
+  // Set up role-based navigation
+  if (user.role === 'NGO') {
+    document.getElementById('nav-dash').classList.remove('hidden');
+    document.getElementById('nav-dash').querySelector('a').href = '/ngo/dashboard';
+    document.getElementById('nav-reqs').classList.remove('hidden');
+  } else if (user.role === 'DONOR') {
+    document.getElementById('nav-dash').classList.remove('hidden');
+    document.getElementById('nav-dash').querySelector('a').href = '/donor/dashboard';
+    document.getElementById('nav-browse').classList.remove('hidden');
+  }
+
   await loadNotifications();
 });
 
@@ -53,14 +73,18 @@ async function loadNotifications() {
 }
 
 async function markRead(id, el) {
-  await apiPut('/notifications/mark-read', { notification_id: id });
-  el.classList.remove('unread');
-  el.querySelector('.notif-dot').style.visibility = 'hidden';
+  if (el.classList.contains('unread')) {
+    await apiPut('/notifications/mark-read', { notification_id: id });
+    el.classList.remove('unread');
+    el.querySelector('.notif-dot').style.visibility = 'hidden';
+    refreshNotifBadge(); // Update navbar badge instantly
+  }
 }
 
 async function markAllRead() {
   await apiPut('/notifications/mark-read', { user_id: user.user_id });
   await loadNotifications();
+  refreshNotifBadge(); // Update navbar badge instantly
 }
 </script>
 {% endblock %}
